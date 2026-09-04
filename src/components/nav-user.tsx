@@ -24,12 +24,6 @@ import { ChevronsUpDownIcon, LogOutIcon } from "lucide-react"
 import type { CurrentUser } from "@/lib/api"
 import { clearSession } from "@/lib/auth-storage"
 
-const roleLabels: Record<CurrentUser["role"], string> = {
-  SUPER_ADMIN: "Super Admin",
-  ADMIN: "Admin",
-  MEMBER: "Member",
-}
-
 function initials(name: string) {
   return name
     .split(" ")
@@ -62,9 +56,7 @@ export function NavUser({ user }: { user: CurrentUser }) {
             </Avatar>
             <div className="grid flex-1 text-left text-sm leading-tight">
               <span className="truncate font-medium">{user.name}</span>
-              <span className="truncate text-xs text-muted-foreground">
-                {roleLabels[user.role]}
-              </span>
+              <span className="truncate text-xs text-muted-foreground">{user.email}</span>
             </div>
             <ChevronsUpDownIcon className="ml-auto size-4" />
           </DropdownMenuTrigger>
