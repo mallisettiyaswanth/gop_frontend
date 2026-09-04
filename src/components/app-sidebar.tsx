@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/sidebar"
 import type { CurrentUser } from "@/lib/api"
 
-const navMain = [
+export const navMain = [
   { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
   { title: "Members", url: "/admin/members", icon: Users },
   { title: "Attendance", url: "/admin/attendance", icon: CalendarCheck },
@@ -34,7 +34,7 @@ const navMain = [
   { title: "Payments", url: "/admin/payments", icon: CreditCard },
 ]
 
-const superAdminNavMain = [
+export const superAdminNavMain = [
   { title: "Staff", url: "/admin/staff", icon: ShieldUser },
 ]
 
