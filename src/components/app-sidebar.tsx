@@ -10,6 +10,7 @@ import {
   CreditCard,
   IdCard,
   ShieldUser,
+  Settings,
 } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
@@ -32,6 +33,7 @@ export const navMain = [
   { title: "Attendance", url: "/admin/attendance", icon: CalendarCheck },
   { title: "Memberships", url: "/admin/memberships", icon: IdCard },
   { title: "Payments", url: "/admin/payments", icon: CreditCard },
+  { title: "Settings", url: "/admin/settings", icon: Settings },
 ]
 
 export const superAdminNavMain = [

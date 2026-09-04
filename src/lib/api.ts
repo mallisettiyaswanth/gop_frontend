@@ -105,3 +105,53 @@ export async function createMember(token: string, input: CreateMemberInput): Pro
   })
   return parseJsonOrThrow(res)
 }
+
+export type GymSettings = {
+  id: string
+  name: string
+  address: string | null
+  phone: string | null
+  email: string | null
+  gstNumber: string | null
+  timezone: string
+  currency: string
+  createdAt: string
+  updatedAt: string
+}
+
+export type UpdateGymSettingsInput = Partial<
+  Omit<GymSettings, "id" | "createdAt" | "updatedAt">
+>
+
+export async function getGymSettings(token: string): Promise<GymSettings> {
+  const res = await authFetch(token, "/settings")
+  return parseJsonOrThrow(res)
+}
+
+export async function updateGymSettings(
+  token: string,
+  input: UpdateGymSettingsInput
+): Promise<GymSettings> {
+  const res = await authFetch(token, "/settings", {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  })
+  return parseJsonOrThrow(res)
+}
+
+export type UpdateCredentialsInput = {
+  currentPassword: string
+  newPassword?: string
+  newPin?: string
+}
+
+export async function updateOwnCredentials(
+  token: string,
+  input: UpdateCredentialsInput
+): Promise<CurrentUser> {
+  const res = await authFetch(token, "/users/me/credentials", {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  })
+  return parseJsonOrThrow(res)
+}
