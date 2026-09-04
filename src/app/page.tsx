@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { Dumbbell } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 export default function LandingPage() {
   return (
@@ -11,9 +12,12 @@ export default function LandingPage() {
             <Dumbbell className="size-4 text-primary" />
             My Gym
           </span>
-          <Button render={<Link href="/login" />} nativeButton={false} size="sm">
-            Admin Login
-          </Button>
+          <div className="flex items-center gap-3">
+            <ThemeToggle />
+            <Button render={<Link href="/login" />} nativeButton={false} size="sm">
+              Admin Login
+            </Button>
+          </div>
         </div>
       </header>
 

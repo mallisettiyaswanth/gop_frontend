@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input"
 import { Spinner } from "@/components/ui/spinner"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Field, FieldGroup, FieldLabel, FieldError } from "@/components/ui/field"
+import { ThemeToggle } from "@/components/theme-toggle"
 import { login, ApiError } from "@/lib/api"
 import { saveSession } from "@/lib/auth-storage"
 
@@ -68,7 +69,11 @@ export default function LoginPage() {
         />
       </div>
 
-      <div className="flex flex-col items-center justify-center px-6 py-16 sm:px-12">
+      <div className="relative flex flex-col items-center justify-center px-6 py-16 sm:px-12">
+        <div className="absolute top-6 right-6">
+          <ThemeToggle />
+        </div>
+
         <div className="w-full max-w-sm">
           <Link
             href="/"
