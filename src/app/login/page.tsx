@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { Dumbbell } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -53,11 +54,16 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-full flex-1 items-center justify-center px-6 py-12">
-      <Card className="w-full max-w-sm">
+    <div className="relative flex min-h-full flex-1 items-center justify-center overflow-hidden bg-background px-6 py-12">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,color-mix(in_oklch,var(--primary),transparent_88%),transparent_60%)]" />
+      <Card className="relative w-full max-w-sm">
         <CardHeader>
-          <Link href="/" className="text-sm text-muted-foreground hover:text-foreground">
-            ← My Gym
+          <Link
+            href="/"
+            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <Dumbbell className="size-4" />
+            My Gym
           </Link>
           <CardTitle className="mt-3 text-xl">Admin login</CardTitle>
           <CardDescription>Sign in with your gym account to continue.</CardDescription>
