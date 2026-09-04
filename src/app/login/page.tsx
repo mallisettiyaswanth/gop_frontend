@@ -153,11 +153,10 @@ export default function LoginPage() {
                         id="pin"
                         maxLength={4}
                         inputMode="numeric"
-                        containerClassName="w-full"
                         value={field.value ?? ""}
                         onChange={field.onChange}
                       >
-                        <InputOTPGroup className="w-full gap-2 *:data-[slot=input-otp-slot]:h-12 *:data-[slot=input-otp-slot]:flex-1 *:data-[slot=input-otp-slot]:rounded-lg *:data-[slot=input-otp-slot]:border">
+                        <InputOTPGroup className="gap-2 *:data-[slot=input-otp-slot]:size-12 *:data-[slot=input-otp-slot]:rounded-lg *:data-[slot=input-otp-slot]:border">
                           <InputOTPSlot index={0} />
                           <InputOTPSlot index={1} />
                           <InputOTPSlot index={2} />
