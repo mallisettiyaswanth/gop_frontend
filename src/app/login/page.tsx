@@ -59,7 +59,7 @@ export default function LoginPage() {
           <Link href="/" className="text-sm text-muted-foreground hover:text-foreground">
             ← My Gym
           </Link>
-          <CardTitle className="mt-3 text-xl">Staff login</CardTitle>
+          <CardTitle className="mt-3 text-xl">Admin login</CardTitle>
           <CardDescription>Sign in with your gym account to continue.</CardDescription>
         </CardHeader>
         <CardContent>

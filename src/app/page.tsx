@@ -7,7 +7,7 @@ export default function LandingPage() {
       <header className="flex items-center justify-between px-6 py-5 sm:px-10">
         <span className="text-base font-semibold">My Gym</span>
         <Button render={<Link href="/login" />} nativeButton={false} variant="outline" size="sm">
-          Staff Login
+          Admin Login
         </Button>
       </header>
 
@@ -21,7 +21,7 @@ export default function LandingPage() {
         </p>
         <div className="mt-8">
           <Button render={<Link href="/login" />} nativeButton={false} size="lg">
-            Staff Login
+            Admin Login
           </Button>
         </div>
       </main>
