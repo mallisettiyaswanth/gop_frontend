@@ -13,7 +13,6 @@ import { Input } from "@/components/ui/input"
 import { Spinner } from "@/components/ui/spinner"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Field, FieldGroup, FieldLabel, FieldError } from "@/components/ui/field"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { loginWithPassword, loginWithPin, ApiError } from "@/lib/api"
@@ -59,10 +58,16 @@ export default function LoginPage() {
     formState: { errors, isSubmitting },
   } = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: "", mode: "password", password: "", pin: "" },
+    defaultValues: { email: "", mode: "pin", password: "", pin: "" },
   })
 
   const mode = watch("mode")
+
+  function toggleMode() {
+    setValue("mode", mode === "pin" ? "password" : "pin")
+    setValue("password", "")
+    setValue("pin", "")
+  }
 
   async function onSubmit(values: LoginValues) {
     setFormError(null)
@@ -138,64 +143,63 @@ export default function LoginPage() {
                 <FieldError errors={[errors.email]} />
               </Field>
 
-              <Tabs
-                value={mode}
-                onValueChange={(value) => {
-                  setValue("mode", value as "password" | "pin")
-                  setValue("password", "")
-                  setValue("pin", "")
-                }}
-              >
-                <TabsList className="w-full">
-                  <TabsTrigger value="password" className="flex-1">
-                    Password
-                  </TabsTrigger>
-                  <TabsTrigger value="pin" className="flex-1">
-                    PIN
-                  </TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="password" className="mt-4">
-                  <Field data-invalid={!!errors.password}>
-                    <FieldLabel htmlFor="password">Password</FieldLabel>
-                    <Input
-                      id="password"
-                      type="password"
-                      autoComplete="current-password"
-                      placeholder="Enter your password"
-                      aria-invalid={!!errors.password}
-                      {...register("password")}
-                    />
-                    <FieldError errors={[errors.password]} />
-                  </Field>
-                </TabsContent>
-
-                <TabsContent value="pin" className="mt-4">
-                  <Field data-invalid={!!errors.pin}>
+              {mode === "pin" ? (
+                <Field data-invalid={!!errors.pin}>
+                  <div className="flex items-center justify-between">
                     <FieldLabel htmlFor="pin">4-digit PIN</FieldLabel>
-                    <Controller
-                      control={control}
-                      name="pin"
-                      render={({ field }) => (
-                        <InputOTP
-                          maxLength={4}
-                          inputMode="numeric"
-                          value={field.value ?? ""}
-                          onChange={field.onChange}
-                        >
-                          <InputOTPGroup>
-                            <InputOTPSlot index={0} />
-                            <InputOTPSlot index={1} />
-                            <InputOTPSlot index={2} />
-                            <InputOTPSlot index={3} />
-                          </InputOTPGroup>
-                        </InputOTP>
-                      )}
-                    />
-                    <FieldError errors={[errors.pin]} />
-                  </Field>
-                </TabsContent>
-              </Tabs>
+                    <button
+                      type="button"
+                      onClick={toggleMode}
+                      className="text-sm font-medium text-primary hover:underline"
+                    >
+                      Use password
+                    </button>
+                  </div>
+                  <Controller
+                    control={control}
+                    name="pin"
+                    render={({ field }) => (
+                      <InputOTP
+                        id="pin"
+                        maxLength={4}
+                        inputMode="numeric"
+                        value={field.value ?? ""}
+                        onChange={field.onChange}
+                      >
+                        <InputOTPGroup className="gap-2 *:data-[slot=input-otp-slot]:rounded-lg *:data-[slot=input-otp-slot]:border">
+                          <InputOTPSlot index={0} />
+                          <InputOTPSlot index={1} />
+                          <InputOTPSlot index={2} />
+                          <InputOTPSlot index={3} />
+                        </InputOTPGroup>
+                      </InputOTP>
+                    )}
+                  />
+                  <FieldError errors={[errors.pin]} />
+                </Field>
+              ) : (
+                <Field data-invalid={!!errors.password}>
+                  <div className="flex items-center justify-between">
+                    <FieldLabel htmlFor="password">Password</FieldLabel>
+                    <button
+                      type="button"
+                      onClick={toggleMode}
+                      className="text-sm font-medium text-primary hover:underline"
+                    >
+                      Use PIN
+                    </button>
+                  </div>
+                  <Input
+                    id="password"
+                    type="password"
+                    autoComplete="current-password"
+                    placeholder="Enter your password"
+                    aria-invalid={!!errors.password}
+                    {...register("password")}
+                  />
+                  <FieldError errors={[errors.password]} />
+                </Field>
+              )}
 
               <Button type="submit" disabled={isSubmitting} className="w-full">
                 {isSubmitting && <Spinner />}
