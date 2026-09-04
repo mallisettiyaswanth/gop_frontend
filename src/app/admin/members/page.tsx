@@ -280,8 +280,8 @@ export default function MembersPage() {
           getRowId={(row) => row.id}
           isLoading={loading}
           emptyMessage="No members yet."
-          isSearchEnable
           isFiltersEnable
+          isSortListEnable
           isViewEnable
           enableColumnPinning
         />
