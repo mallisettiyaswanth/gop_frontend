@@ -30,7 +30,6 @@ import {
   type MemberStatus,
 } from "@/lib/api"
 import { getToken } from "@/lib/auth-storage"
-import { cn } from "@/lib/utils"
 
 const statusVariant: Record<MemberStatus, BadgeProps["variant"]> = {
   ACTIVE: "success-light",
@@ -221,7 +220,7 @@ export default function MembersPage() {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Members</h1>
@@ -279,7 +278,7 @@ export default function MembersPage() {
           enableColumnPinning
         />
       ) : (
-        <div className="min-h-0 flex-1 overflow-auto">
+        <div>
           {loading ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {Array.from({ length: 6 }, (_, i) => (
@@ -287,7 +286,7 @@ export default function MembersPage() {
               ))}
             </div>
           ) : members.length === 0 ? (
-            <div className={cn("flex h-full items-center justify-center rounded-lg border py-16 text-sm text-muted-foreground")}>
+            <div className="flex items-center justify-center rounded-lg border py-16 text-sm text-muted-foreground">
               No members yet.
             </div>
           ) : (

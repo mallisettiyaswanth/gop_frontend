@@ -196,15 +196,17 @@ export function DataTable<TData extends object>({
       tableLayout={{
         dense,
         rowBorder: true,
+        cellBorder: true,
         headerBorder: true,
-        headerSticky: true,
+        headerSticky: false,
+        width: "auto",
         columnsPinnable: enableColumnPinning,
         ...tableLayoutOverrides,
       }}
     >
-      <div className={cn("flex min-h-0 flex-1 flex-col gap-3", className)}>
+      <div className={cn("flex flex-col gap-3", className)}>
         {showToolbar && (
-          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             {isSearchEnable ? (
               <div className="relative w-full max-w-xs">
                 <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -235,16 +237,12 @@ export function DataTable<TData extends object>({
           </div>
         )}
 
-        <div className="min-h-0 flex-1 overflow-auto rounded-lg border">
+        <div className="overflow-auto rounded-lg border">
           <DataGridContainer>
             <DataGridTable />
           </DataGridContainer>
         </div>
-        {!hidePagination && (
-          <div className="shrink-0">
-            <DataGridPagination sizes={pageSizeOptions} />
-          </div>
-        )}
+        {!hidePagination && <DataGridPagination sizes={pageSizeOptions} />}
       </div>
     </DataGrid>
   )
