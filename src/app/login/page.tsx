@@ -2,8 +2,6 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import Link from "next/link"
-import { Dumbbell } from "lucide-react"
 import { GrainGradient } from "@paper-design/shaders-react"
 import { Controller, useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -109,16 +107,8 @@ export default function LoginPage() {
           <ThemeToggle />
         </div>
 
-        <div className="w-full max-w-sm">
-          <Link
-            href="/"
-            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <Dumbbell className="size-4" />
-            My Gym
-          </Link>
-
-          <h1 className="mt-6 text-2xl font-semibold tracking-tight">Welcome!</h1>
+        <div className="w-full max-w-sm -translate-y-12">
+          <h1 className="text-2xl font-semibold tracking-tight">Welcome!</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Please enter your details to login.
           </p>
@@ -163,10 +153,11 @@ export default function LoginPage() {
                         id="pin"
                         maxLength={4}
                         inputMode="numeric"
+                        containerClassName="w-full"
                         value={field.value ?? ""}
                         onChange={field.onChange}
                       >
-                        <InputOTPGroup className="gap-2 *:data-[slot=input-otp-slot]:rounded-lg *:data-[slot=input-otp-slot]:border">
+                        <InputOTPGroup className="w-full gap-2 *:data-[slot=input-otp-slot]:h-12 *:data-[slot=input-otp-slot]:flex-1 *:data-[slot=input-otp-slot]:rounded-lg *:data-[slot=input-otp-slot]:border">
                           <InputOTPSlot index={0} />
                           <InputOTPSlot index={1} />
                           <InputOTPSlot index={2} />
