@@ -55,3 +55,53 @@ export async function getCurrentUser(token: string): Promise<CurrentUser> {
   })
   return parseJsonOrThrow(res)
 }
+
+function authFetch(token: string, path: string, init: RequestInit = {}) {
+  return fetch(`${API_URL}${path}`, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+      ...init.headers,
+    },
+  })
+}
+
+export type MemberStatus =
+  | "ACTIVE"
+  | "EXPIRING_SOON"
+  | "EXPIRED"
+  | "FROZEN"
+  | "CANCELLED"
+  | "PENDING"
+
+export type Member = {
+  id: string
+  memberCode: string
+  name: string
+  phone: string
+  email: string | null
+  status: MemberStatus
+  joinDate: string
+  createdAt: string
+}
+
+export type CreateMemberInput = {
+  name: string
+  phone: string
+  email?: string
+  notes?: string
+}
+
+export async function listMembers(token: string): Promise<Member[]> {
+  const res = await authFetch(token, "/members")
+  return parseJsonOrThrow(res)
+}
+
+export async function createMember(token: string, input: CreateMemberInput): Promise<Member> {
+  const res = await authFetch(token, "/members", {
+    method: "POST",
+    body: JSON.stringify(input),
+  })
+  return parseJsonOrThrow(res)
+}
