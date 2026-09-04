@@ -22,7 +22,8 @@ export function NavMain({
     <SidebarGroup>
       <SidebarMenu>
         {items.map((item) => {
-          const isActive = pathname === item.url
+          const isActive =
+            pathname === item.url || (item.url !== "/admin" && pathname.startsWith(`${item.url}/`))
           return (
             <SidebarMenuItem key={item.title}>
               <SidebarMenuButton
