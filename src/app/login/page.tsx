@@ -48,82 +48,81 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="bg-grid-dots flex min-h-full flex-1 items-center justify-center bg-background p-3 sm:p-6">
-      <div className="grid w-full max-w-5xl overflow-hidden rounded-2xl border border-border bg-card shadow-xl lg:grid-cols-2">
-        {/* Image placeholder — swap GrainGradient for a real photo later */}
-        <div className="relative hidden min-h-[600px] overflow-hidden bg-black lg:block">
-          <GrainGradient
-            speed={1}
-            scale={1}
-            rotation={0}
-            offsetX={0}
-            offsetY={0}
-            softness={0.6}
-            intensity={0.4}
-            noise={0.2}
-            shape="corners"
-            frame={2854.5}
-            colors={["#FFFFFF", "#2A2A2A", "#1A1A1A", "#FFFFFF"]}
-            colorBack="#000000"
-            className="absolute inset-0"
-          />
-        </div>
+    <div className="grid min-h-screen bg-background lg:grid-cols-2">
+      {/* Image placeholder — swap GrainGradient for a real photo later */}
+      <div className="relative hidden overflow-hidden bg-black lg:block">
+        <GrainGradient
+          speed={1}
+          scale={1}
+          rotation={0}
+          offsetX={0}
+          offsetY={0}
+          softness={0.6}
+          intensity={0.4}
+          noise={0.2}
+          shape="corners"
+          frame={2854.5}
+          colors={["#FFFFFF", "#2A2A2A", "#1A1A1A", "#FFFFFF"]}
+          colorBack="#000000"
+          className="absolute inset-0"
+        />
+      </div>
 
-        <div className="flex flex-col items-center justify-center px-6 py-16 sm:px-12">
-          <div className="w-full max-w-sm">
-            <Link
-              href="/"
-              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-            >
-              <Dumbbell className="size-4" />
-              My Gym
-            </Link>
+      <div className="flex flex-col items-center justify-center px-6 py-16 sm:px-12">
+        <div className="w-full max-w-sm">
+          <Link
+            href="/"
+            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <Dumbbell className="size-4" />
+            My Gym
+          </Link>
 
-            <h1 className="mt-6 text-2xl font-semibold tracking-tight">Welcome!</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Please enter your details to login.
-            </p>
+          <h1 className="mt-6 text-2xl font-semibold tracking-tight">Welcome!</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Please enter your details to login.
+          </p>
 
-            <form onSubmit={handleSubmit(onSubmit)} noValidate className="mt-8">
-              <FieldGroup>
-                {formError && (
-                  <Alert variant="destructive">
-                    <AlertDescription>{formError}</AlertDescription>
-                  </Alert>
-                )}
-                <Field data-invalid={!!errors.email}>
-                  <FieldLabel htmlFor="email">Email address</FieldLabel>
-                  <Input
-                    id="email"
-                    type="email"
-                    autoComplete="email"
-                    placeholder="Enter your email address"
-                    aria-invalid={!!errors.email}
-                    {...register("email")}
-                  />
-                  <FieldError errors={[errors.email]} />
-                </Field>
-                <Field data-invalid={!!errors.password}>
-                  <FieldLabel htmlFor="password">Password</FieldLabel>
-                  <Input
-                    id="password"
-                    type="password"
-                    autoComplete="current-password"
-                    placeholder="Enter your password"
-                    aria-invalid={!!errors.password}
-                    {...register("password")}
-                  />
-                  <FieldError errors={[errors.password]} />
-                </Field>
-                <Button type="submit" disabled={isSubmitting} className="w-full">
-                  {isSubmitting && <Spinner />}
-                  {isSubmitting ? "Signing in…" : "Log In"}
-                </Button>
-              </FieldGroup>
-            </form>
-          </div>
+          <form onSubmit={handleSubmit(onSubmit)} noValidate className="mt-8">
+            <FieldGroup>
+              {formError && (
+                <Alert variant="destructive">
+                  <AlertDescription>{formError}</AlertDescription>
+                </Alert>
+              )}
+              <Field data-invalid={!!errors.email}>
+                <FieldLabel htmlFor="email">Email address</FieldLabel>
+                <Input
+                  id="email"
+                  type="email"
+                  autoComplete="email"
+                  placeholder="Enter your email address"
+                  aria-invalid={!!errors.email}
+                  {...register("email")}
+                />
+                <FieldError errors={[errors.email]} />
+              </Field>
+              <Field data-invalid={!!errors.password}>
+                <FieldLabel htmlFor="password">Password</FieldLabel>
+                <Input
+                  id="password"
+                  type="password"
+                  autoComplete="current-password"
+                  placeholder="Enter your password"
+                  aria-invalid={!!errors.password}
+                  {...register("password")}
+                />
+                <FieldError errors={[errors.password]} />
+              </Field>
+              <Button type="submit" disabled={isSubmitting} className="w-full">
+                {isSubmitting && <Spinner />}
+                {isSubmitting ? "Signing in…" : "Log In"}
+              </Button>
+            </FieldGroup>
+          </form>
         </div>
       </div>
     </div>
   )
 }
+
