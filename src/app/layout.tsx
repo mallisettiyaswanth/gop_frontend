@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
-import { Inter, Geist, Fira_Code } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import { cn } from "@/lib/utils";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
 
-const inter = Inter({ variable: "--font-sans", subsets: ["latin"] });
-const geist = Geist({ variable: "--font-heading", subsets: ["latin"] });
-const firaCode = Fira_Code({ variable: "--font-mono", subsets: ["latin"] });
+const geistSans = Geist({ variable: "--font-sans", subsets: ["latin"] });
+const geistHeading = Geist({ variable: "--font-heading", subsets: ["latin"] });
+const geistMono = Geist_Mono({ variable: "--font-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "My Gym",
@@ -17,7 +17,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={cn("h-full antialiased", inter.variable, geist.variable, firaCode.variable)}
+      className={cn(
+        "h-full antialiased",
+        geistSans.variable,
+        geistHeading.variable,
+        geistMono.variable
+      )}
     >
       <body className="min-h-full flex flex-col">
         <TooltipProvider>{children}</TooltipProvider>
