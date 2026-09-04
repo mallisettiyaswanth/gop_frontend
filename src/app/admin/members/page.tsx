@@ -62,23 +62,23 @@ const columns: DataTableColumn<Member>[] = [
   {
     accessorKey: "memberCode",
     header: ({ column }) => <DataGridColumnHeader column={column} title="Member" />,
-    meta: { headerTitle: "Member" },
+    meta: { headerTitle: "Member", skeleton: <Skeleton className="h-4 w-20" /> },
   },
   {
     accessorKey: "name",
     header: ({ column }) => <DataGridColumnHeader column={column} title="Name" />,
-    meta: { headerTitle: "Name" },
+    meta: { headerTitle: "Name", skeleton: <Skeleton className="h-4 w-32" /> },
   },
   {
     accessorKey: "phone",
     header: ({ column }) => <DataGridColumnHeader column={column} title="Phone" />,
-    meta: { headerTitle: "Phone" },
+    meta: { headerTitle: "Phone", skeleton: <Skeleton className="h-4 w-24" /> },
   },
   {
     accessorKey: "email",
     header: ({ column }) => <DataGridColumnHeader column={column} title="Email" />,
     cell: ({ row }) => row.original.email ?? "—",
-    meta: { headerTitle: "Email" },
+    meta: { headerTitle: "Email", skeleton: <Skeleton className="h-4 w-36" /> },
   },
   {
     accessorKey: "status",
@@ -96,13 +96,14 @@ const columns: DataTableColumn<Member>[] = [
         label: statusLabel[status],
         value: status,
       })),
+      skeleton: <Skeleton className="h-5 w-20 rounded-full" />,
     },
   },
   {
     accessorKey: "joinDate",
     header: ({ column }) => <DataGridColumnHeader column={column} title="Joined" />,
     cell: ({ row }) => new Date(row.original.joinDate).toLocaleDateString(),
-    meta: { headerTitle: "Joined" },
+    meta: { headerTitle: "Joined", skeleton: <Skeleton className="h-4 w-20" /> },
   },
 ]
 
