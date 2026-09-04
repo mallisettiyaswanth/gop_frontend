@@ -2,10 +2,13 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
+import { AppSidebar } from "@/components/app-sidebar"
 import { LoadingScreen } from "@/components/loading-screen"
+import { ThemeToggle } from "@/components/theme-toggle"
+import { Separator } from "@/components/ui/separator"
+import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import type { CurrentUser } from "@/lib/api"
-import { getStoredUser, getToken, clearSession } from "@/lib/auth-storage"
+import { getStoredUser, getToken } from "@/lib/auth-storage"
 
 export default function AdminLayout({ children }: LayoutProps<"/admin">) {
   const router = useRouter()
@@ -23,27 +26,23 @@ export default function AdminLayout({ children }: LayoutProps<"/admin">) {
     setChecked(true)
   }, [router])
 
-  function handleLogout() {
-    clearSession()
-    router.replace("/login")
-  }
-
-  if (!checked) {
+  if (!checked || !user) {
     return <LoadingScreen />
   }
 
   return (
-    <div className="flex min-h-full flex-1 flex-col">
-      <header className="flex items-center justify-between border-b px-6 py-4">
-        <span className="text-sm font-semibold">My Gym Admin</span>
-        <div className="flex items-center gap-3 text-sm">
-          <span className="text-muted-foreground">{user?.name}</span>
-          <Button variant="outline" size="sm" onClick={handleLogout}>
-            Log out
-          </Button>
-        </div>
-      </header>
-      <main className="flex flex-1 flex-col px-6 py-8">{children}</main>
-    </div>
+    <SidebarProvider>
+      <AppSidebar user={user} />
+      <SidebarInset>
+        <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b px-4">
+          <div className="flex items-center gap-2">
+            <SidebarTrigger className="-ml-1" />
+            <Separator orientation="vertical" className="mr-2 data-vertical:h-4 data-vertical:self-auto" />
+          </div>
+          <ThemeToggle />
+        </header>
+        <main className="flex flex-1 flex-col gap-4 p-6">{children}</main>
+      </SidebarInset>
+    </SidebarProvider>
   )
 }
