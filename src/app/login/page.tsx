@@ -82,7 +82,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="grid min-h-screen bg-background lg:grid-cols-2">
+    <div className="grid min-h-screen bg-background lg:grid-cols-[3fr_2fr]">
       {/* Image placeholder — swap GrainGradient for a real photo later */}
       <div className="relative hidden overflow-hidden bg-black lg:block">
         <GrainGradient
