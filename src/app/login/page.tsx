@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Dumbbell } from "lucide-react"
 import { GrainGradient } from "@paper-design/shaders-react"
-import { useForm } from "react-hook-form"
+import { Controller, useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { Button } from "@/components/ui/button"
@@ -13,14 +13,36 @@ import { Input } from "@/components/ui/input"
 import { Spinner } from "@/components/ui/spinner"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Field, FieldGroup, FieldLabel, FieldError } from "@/components/ui/field"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { login, ApiError } from "@/lib/api"
+import { loginWithPassword, loginWithPin, ApiError } from "@/lib/api"
 import { saveSession } from "@/lib/auth-storage"
 
-const loginSchema = z.object({
-  email: z.string().min(1, "Email is required").email("Enter a valid email address"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
-})
+const loginSchema = z
+  .object({
+    email: z.string().min(1, "Email is required").email("Enter a valid email address"),
+    mode: z.enum(["password", "pin"]),
+    password: z.string().optional(),
+    pin: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.mode === "password") {
+      if (!data.password || data.password.length < 8) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Password must be at least 8 characters",
+          path: ["password"],
+        })
+      }
+    } else if (!data.pin || !/^\d{4}$/.test(data.pin)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Enter your 4-digit PIN",
+        path: ["pin"],
+      })
+    }
+  })
 
 type LoginValues = z.infer<typeof loginSchema>
 
@@ -30,17 +52,25 @@ export default function LoginPage() {
 
   const {
     register,
+    control,
     handleSubmit,
+    watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: "", password: "" },
+    defaultValues: { email: "", mode: "password", password: "", pin: "" },
   })
+
+  const mode = watch("mode")
 
   async function onSubmit(values: LoginValues) {
     setFormError(null)
     try {
-      const result = await login(values.email, values.password)
+      const result =
+        values.mode === "password"
+          ? await loginWithPassword(values.email, values.password!)
+          : await loginWithPin(values.email, values.pin!)
       saveSession(result.accessToken, result.user)
       router.push("/admin")
     } catch (err) {
@@ -107,18 +137,66 @@ export default function LoginPage() {
                 />
                 <FieldError errors={[errors.email]} />
               </Field>
-              <Field data-invalid={!!errors.password}>
-                <FieldLabel htmlFor="password">Password</FieldLabel>
-                <Input
-                  id="password"
-                  type="password"
-                  autoComplete="current-password"
-                  placeholder="Enter your password"
-                  aria-invalid={!!errors.password}
-                  {...register("password")}
-                />
-                <FieldError errors={[errors.password]} />
-              </Field>
+
+              <Tabs
+                value={mode}
+                onValueChange={(value) => {
+                  setValue("mode", value as "password" | "pin")
+                  setValue("password", "")
+                  setValue("pin", "")
+                }}
+              >
+                <TabsList className="w-full">
+                  <TabsTrigger value="password" className="flex-1">
+                    Password
+                  </TabsTrigger>
+                  <TabsTrigger value="pin" className="flex-1">
+                    PIN
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="password" className="mt-4">
+                  <Field data-invalid={!!errors.password}>
+                    <FieldLabel htmlFor="password">Password</FieldLabel>
+                    <Input
+                      id="password"
+                      type="password"
+                      autoComplete="current-password"
+                      placeholder="Enter your password"
+                      aria-invalid={!!errors.password}
+                      {...register("password")}
+                    />
+                    <FieldError errors={[errors.password]} />
+                  </Field>
+                </TabsContent>
+
+                <TabsContent value="pin" className="mt-4">
+                  <Field data-invalid={!!errors.pin}>
+                    <FieldLabel htmlFor="pin">4-digit PIN</FieldLabel>
+                    <Controller
+                      control={control}
+                      name="pin"
+                      render={({ field }) => (
+                        <InputOTP
+                          maxLength={4}
+                          inputMode="numeric"
+                          value={field.value ?? ""}
+                          onChange={field.onChange}
+                        >
+                          <InputOTPGroup>
+                            <InputOTPSlot index={0} />
+                            <InputOTPSlot index={1} />
+                            <InputOTPSlot index={2} />
+                            <InputOTPSlot index={3} />
+                          </InputOTPGroup>
+                        </InputOTP>
+                      )}
+                    />
+                    <FieldError errors={[errors.pin]} />
+                  </Field>
+                </TabsContent>
+              </Tabs>
+
               <Button type="submit" disabled={isSubmitting} className="w-full">
                 {isSubmitting && <Spinner />}
                 {isSubmitting ? "Signing in…" : "Log In"}
@@ -130,4 +208,3 @@ export default function LoginPage() {
     </div>
   )
 }
-

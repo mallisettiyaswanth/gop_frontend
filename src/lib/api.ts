@@ -31,11 +31,20 @@ async function parseJsonOrThrow(res: Response) {
   return data
 }
 
-export async function login(email: string, password: string): Promise<LoginResult> {
+export async function loginWithPassword(email: string, password: string): Promise<LoginResult> {
   const res = await fetch(`${API_URL}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
+  })
+  return parseJsonOrThrow(res)
+}
+
+export async function loginWithPin(email: string, pin: string): Promise<LoginResult> {
+  const res = await fetch(`${API_URL}/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, pin }),
   })
   return parseJsonOrThrow(res)
 }
