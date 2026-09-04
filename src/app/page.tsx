@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 
 export default function LandingPage() {
   return (
-    <div className="flex min-h-full flex-1 flex-col bg-background">
+    <div className="bg-grid-dots flex min-h-full flex-1 flex-col bg-background">
       <header className="sticky top-0 z-10 border-b border-border/60 bg-background/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4 sm:px-10">
           <span className="flex items-center gap-2 text-sm font-semibold">

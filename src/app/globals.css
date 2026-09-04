@@ -158,3 +158,8 @@
     font-family: var(--font-mono);
   }
 }
+
+.bg-grid-dots {
+  background-image: radial-gradient(circle, var(--border) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
