@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { useTable } from "@tanstack/react-table"
 import type { Column, ColumnDef, Row } from "@tanstack/react-table"
 import {
@@ -10,6 +10,7 @@ import {
   GripVerticalIcon,
   ArrowUpDownIcon,
   ListFilterIcon,
+  XIcon,
 } from "lucide-react"
 import {
   DataGrid,
@@ -24,7 +25,6 @@ import { DataGridPagination } from "@/components/reui/data-grid/data-grid-pagina
 import { DataGridColumnVisibility } from "@/components/reui/data-grid/data-grid-column-visibility"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/reui/badge"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
@@ -113,23 +113,60 @@ function getFilterMeta<TData extends object>(column: DataTableColumnInstance<TDa
   return { variant: meta.variant ?? "text", options: meta.options ?? [] } as const
 }
 
-function FilterTextValue<TData extends object>({
+/** Value control for an existing filter chip's field selector, joined flush against its neighbors. */
+function FilterChipField<TData extends object>({
   column,
+  availableColumns,
+  onFieldChange,
 }: {
   column: DataTableColumnInstance<TData>
+  availableColumns: DataTableColumnInstance<TData>[]
+  onFieldChange: (columnId: string) => void
 }) {
+  const [open, setOpen] = useState(false)
+  const label = getColumnHeaderLabel(column)
+
   return (
-    <Input
-      autoFocus
-      value={(column.getFilterValue() as string) ?? ""}
-      onChange={(e) => column.setFilterValue(e.target.value || undefined)}
-      placeholder={`Filter ${getColumnHeaderLabel(column)}…`}
-      className="h-8 w-full"
-    />
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        render={
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 rounded-none rounded-l-md border border-r-0 font-normal"
+          >
+            {label}
+          </Button>
+        }
+      />
+      <PopoverContent align="start" className="w-44 p-0">
+        <Command>
+          <CommandInput placeholder="Search fields…" />
+          <CommandList>
+            <CommandEmpty>No fields found.</CommandEmpty>
+            <CommandGroup>
+              {availableColumns.map((availableColumn) => (
+                <CommandItem
+                  key={availableColumn.id}
+                  value={getColumnHeaderLabel(availableColumn)}
+                  data-checked={availableColumn.id === column.id}
+                  onSelect={() => {
+                    onFieldChange(availableColumn.id)
+                    setOpen(false)
+                  }}
+                >
+                  {getColumnHeaderLabel(availableColumn)}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
   )
 }
 
-function FilterSelectValue<TData extends object>({
+function FilterChipSelectValue<TData extends object>({
   column,
 }: {
   column: DataTableColumnInstance<TData>
@@ -137,57 +174,81 @@ function FilterSelectValue<TData extends object>({
   const [open, setOpen] = useState(false)
   const { options } = getFilterMeta(column)
   const selected = (column.getFilterValue() as string[] | undefined) ?? []
-
-  const summary =
-    selected.length === 0
-      ? "Any"
-      : selected.length === 1
-        ? options.find((option) => option.value === selected[0])?.label ?? selected[0]
-        : `${selected.length} selected`
+  const selectedLabels = options.filter((option) => selected.includes(option.value))
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         render={
-          <Button variant="outline" size="sm" className="h-8 w-full justify-start font-normal">
-            <span className="truncate">{summary}</span>
+          <Button variant="ghost" size="sm" className="h-8 min-w-16 rounded-none border font-normal">
+            {selectedLabels.length === 0
+              ? "Select options…"
+              : selectedLabels.length > 1
+                ? `${selectedLabels.length} selected`
+                : selectedLabels[0]?.label}
           </Button>
         }
       />
-      <PopoverContent align="start" className="w-48">
-        <div className="flex flex-col gap-2">
-          {options.map((option) => (
-            <label key={option.value} className="flex items-center gap-2 text-sm">
-              <Checkbox
-                checked={selected.includes(option.value)}
-                onCheckedChange={(checked) => {
-                  const next = checked
-                    ? [...selected, option.value]
-                    : selected.filter((value) => value !== option.value)
-                  column.setFilterValue(next.length > 0 ? next : undefined)
-                }}
-              />
-              {option.label}
-            </label>
-          ))}
-        </div>
+      <PopoverContent align="start" className="w-48 p-0">
+        <Command>
+          <CommandInput placeholder="Search options…" />
+          <CommandList>
+            <CommandEmpty>No options found.</CommandEmpty>
+            <CommandGroup>
+              {options.map((option) => {
+                const isSelected = selected.includes(option.value)
+                return (
+                  <CommandItem
+                    key={option.value}
+                    value={option.label}
+                    data-checked={isSelected}
+                    onSelect={() => {
+                      const next = isSelected
+                        ? selected.filter((value) => value !== option.value)
+                        : [...selected, option.value]
+                      column.setFilterValue(next.length > 0 ? next : undefined)
+                    }}
+                  >
+                    {option.label}
+                  </CommandItem>
+                )
+              })}
+            </CommandGroup>
+          </CommandList>
+        </Command>
       </PopoverContent>
     </Popover>
   )
 }
 
-function FilterValueEditor<TData extends object>({
+function FilterChipTextValue<TData extends object>({
+  column,
+}: {
+  column: DataTableColumnInstance<TData>
+}) {
+  return (
+    <Input
+      value={(column.getFilterValue() as string) ?? ""}
+      onChange={(e) => column.setFilterValue(e.target.value || undefined)}
+      placeholder="Enter value…"
+      className="h-8 w-24 rounded-none border-x-0 px-1.5"
+    />
+  )
+}
+
+/** Value control for an existing filter chip, joined flush against its neighbors. */
+function FilterChipValue<TData extends object>({
   column,
 }: {
   column: DataTableColumnInstance<TData>
 }) {
   const { variant } = getFilterMeta(column)
-  if (variant === "select") return <FilterSelectValue column={column} />
-  return <FilterTextValue column={column} />
+  if (variant === "select") return <FilterChipSelectValue column={column} />
+  return <FilterChipTextValue column={column} />
 }
 
-/** One row inside the Filter popover: field picker, value editor, remove, drag handle. */
-function DataTableFilterItem<TData extends object>({
+/** One active filter, rendered as a single joined pill: field, value, remove. */
+function FilterChip<TData extends object>({
   column,
   availableColumns,
   onFieldChange,
@@ -198,90 +259,91 @@ function DataTableFilterItem<TData extends object>({
   onFieldChange: (columnId: string) => void
   onRemove: () => void
 }) {
-  const [showField, setShowField] = useState(false)
   const label = getColumnHeaderLabel(column)
 
   return (
-    <SortableItem value={column.id} asChild>
-      <div className="flex items-center gap-2">
-        <Popover open={showField} onOpenChange={setShowField}>
-          <PopoverTrigger
-            render={
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-32 shrink-0 justify-between font-normal"
-              >
-                <span className="truncate">{label}</span>
-                <ChevronsUpDownIcon className="opacity-50" />
-              </Button>
-            }
-          />
-          <PopoverContent align="start" className="w-44 p-0">
-            <Command>
-              <CommandInput placeholder="Search fields…" />
-              <CommandList>
-                <CommandEmpty>No fields found.</CommandEmpty>
-                <CommandGroup>
-                  {availableColumns.map((availableColumn) => (
-                    <CommandItem
-                      key={availableColumn.id}
-                      value={getColumnHeaderLabel(availableColumn)}
-                      onSelect={() => {
-                        onFieldChange(availableColumn.id)
-                        setShowField(false)
-                      }}
-                    >
-                      <span className="truncate">{getColumnHeaderLabel(availableColumn)}</span>
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              </CommandList>
-            </Command>
-          </PopoverContent>
-        </Popover>
-        <div className="min-w-36 max-w-60 flex-1">
-          <FilterValueEditor column={column} />
-        </div>
-        <Button
-          variant="outline"
-          size="icon"
-          className="size-8 shrink-0"
-          onClick={onRemove}
-          aria-label={`Remove ${label} filter`}
-        >
-          <Trash2Icon />
-        </Button>
-        <SortableItemHandle asChild>
-          <Button
-            variant="outline"
-            size="icon"
-            className="size-8 shrink-0"
-            aria-label={`Reorder ${label} filter`}
-          >
-            <GripVerticalIcon />
-          </Button>
-        </SortableItemHandle>
-      </div>
-    </SortableItem>
+    <div role="listitem" className="flex h-8 items-center rounded-md bg-background">
+      <FilterChipField column={column} availableColumns={availableColumns} onFieldChange={onFieldChange} />
+      <FilterChipValue column={column} />
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-8 shrink-0 rounded-none rounded-r-md border border-l-0 px-1.5"
+        onClick={onRemove}
+        aria-label={`Remove ${label} filter`}
+      >
+        <XIcon className="size-3.5" />
+      </Button>
+    </div>
   )
 }
 
-/** "Filter" toolbar button: opens a drag-reorderable list of per-column filters, badged with the active count. */
-function DataTableFilterList<TData extends object>({
+/** Command-list options for picking a value once a field is selected in the filter menu. */
+function FilterValueCommandOptions<TData extends object>({
+  column,
+  value,
+  onSelect,
+}: {
+  column: DataTableColumnInstance<TData>
+  value: string
+  onSelect: (value: string | string[]) => void
+}) {
+  const { variant, options } = getFilterMeta(column)
+
+  if (variant === "select") {
+    return (
+      <CommandGroup>
+        {options.map((option) => (
+          <CommandItem key={option.value} value={option.label} onSelect={() => onSelect([option.value])}>
+            {option.label}
+          </CommandItem>
+        ))}
+      </CommandGroup>
+    )
+  }
+
+  const isEmpty = !value.trim()
+  return (
+    <CommandGroup>
+      <CommandItem value={value || "type-to-add-filter"} onSelect={() => onSelect(value)} disabled={isEmpty}>
+        {isEmpty ? "Type to add filter…" : `Filter by "${value}"`}
+      </CommandItem>
+    </CommandGroup>
+  )
+}
+
+/**
+ * Command-palette-style filter menu: active filters render as joined pill
+ * chips, and a single trigger opens a search-driven "pick a field, then pick
+ * a value" flow that commits a filter immediately on selection.
+ */
+function DataTableFilterMenu<TData extends object>({
   table,
 }: {
   table: DataTableInstance<TData>
 }) {
   const [open, setOpen] = useState(false)
+  const [selectedColumnId, setSelectedColumnId] = useState<string | null>(null)
+  const [inputValue, setInputValue] = useState("")
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const filterableColumns = table.getAllColumns().filter((column) => column.getCanFilter())
   if (filterableColumns.length === 0) return null
 
   const filters = table.state.columnFilters
-  const activeIds = filters.map((filter) => filter.id)
-  const activeIdSet = new Set(activeIds)
+  const activeIdSet = new Set(filters.map((filter) => filter.id))
   const availableColumns = filterableColumns.filter((column) => !activeIdSet.has(column.id))
+  const selectedColumn = selectedColumnId ? (table.getColumn(selectedColumnId) ?? null) : null
+
+  function onOpenChange(nextOpen: boolean) {
+    setOpen(nextOpen)
+    if (!nextOpen) {
+      setTimeout(() => {
+        setSelectedColumnId(null)
+        setInputValue("")
+      }, 100)
+    }
+  }
 
   function updateField(oldId: string, newId: string) {
     table.setColumnFilters((old) =>
@@ -293,79 +355,92 @@ function DataTableFilterList<TData extends object>({
     table.setColumnFilters((old) => old.filter((filter) => filter.id !== columnId))
   }
 
-  function addFilter() {
-    const first = availableColumns[0]
-    if (!first) return
-    table.setColumnFilters((old) => [...old, { id: first.id, value: undefined }])
+  function commitFilter(columnId: string, value: string | string[]) {
+    table.setColumnFilters((old) => [...old, { id: columnId, value }])
+    onOpenChange(false)
   }
 
   return (
-    <Sortable value={filters} onValueChange={table.setColumnFilters} getItemValue={(item) => item.id}>
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger
-          render={
-            <Button variant="outline" size="sm">
-              <ListFilterIcon />
-              Filter
-              {activeIds.length > 0 && (
-                <Badge variant="secondary" size="sm">
-                  {activeIds.length}
-                </Badge>
-              )}
-            </Button>
-          }
-        />
-        <PopoverContent
-          align="start"
-          className="flex w-full max-w-full flex-col gap-3.5 p-4 sm:min-w-[420px]"
+    <div role="list" className="flex flex-wrap items-center gap-2">
+      {filters.map((filter) => {
+        const column = table.getColumn(filter.id)
+        if (!column) return null
+        return (
+          <FilterChip
+            key={filter.id}
+            column={column}
+            availableColumns={availableColumns}
+            onFieldChange={(newId) => updateField(filter.id, newId)}
+            onRemove={() => removeFilter(filter.id)}
+          />
+        )
+      })}
+      {filters.length > 0 && (
+        <Button
+          variant="outline"
+          size="icon"
+          className="size-8"
+          onClick={() => table.resetColumnFilters()}
+          aria-label="Reset all filters"
         >
-          <div className="flex flex-col gap-1">
-            <h4 className="font-medium leading-none">
-              {activeIds.length > 0 ? "Filters" : "No filters applied"}
-            </h4>
-            <p
-              className={cn(
-                "text-sm text-muted-foreground",
-                activeIds.length > 0 && "sr-only"
-              )}
-            >
-              {activeIds.length > 0
-                ? "Modify filters to refine your rows."
-                : "Add filters to refine your rows."}
-            </p>
-          </div>
-          {activeIds.length > 0 && (
-            <SortableContent asChild>
-              <div role="list" className="flex max-h-[300px] flex-col gap-2 overflow-y-auto p-1">
-                {activeIds.map((id) => {
-                  const column = table.getColumn(id)
-                  if (!column) return null
-                  return (
-                    <DataTableFilterItem
-                      key={id}
-                      column={column}
-                      availableColumns={availableColumns}
-                      onFieldChange={(newId) => updateField(id, newId)}
-                      onRemove={() => removeFilter(id)}
-                    />
-                  )
-                })}
-              </div>
-            </SortableContent>
-          )}
-          <div className="flex w-full items-center gap-2">
-            <Button size="sm" onClick={addFilter} disabled={availableColumns.length === 0}>
-              Add filter
-            </Button>
-            {activeIds.length > 0 && (
-              <Button variant="outline" size="sm" onClick={() => table.resetColumnFilters()}>
-                Reset filters
+          <XIcon />
+        </Button>
+      )}
+      {availableColumns.length > 0 && (
+        <Popover open={open} onOpenChange={onOpenChange}>
+          <PopoverTrigger
+            render={
+              <Button
+                variant="outline"
+                size={filters.length > 0 ? "icon" : "sm"}
+                className={cn(filters.length > 0 && "size-8", "h-8 font-normal")}
+                aria-label="Open filter command menu"
+              >
+                <ListFilterIcon />
+                {filters.length === 0 && "Filter"}
               </Button>
-            )}
-          </div>
-        </PopoverContent>
-      </Popover>
-    </Sortable>
+            }
+          />
+          <PopoverContent align="start" className="w-64 p-0">
+            <Command>
+              <CommandInput
+                ref={inputRef}
+                placeholder={selectedColumn ? getColumnHeaderLabel(selectedColumn) : "Search fields…"}
+                value={inputValue}
+                onValueChange={setInputValue}
+              />
+              <CommandList>
+                {selectedColumn ? (
+                  <FilterValueCommandOptions
+                    column={selectedColumn}
+                    value={inputValue}
+                    onSelect={(value) => commitFilter(selectedColumn.id, value)}
+                  />
+                ) : (
+                  <>
+                    <CommandEmpty>No fields found.</CommandEmpty>
+                    <CommandGroup>
+                      {availableColumns.map((column) => (
+                        <CommandItem
+                          key={column.id}
+                          value={getColumnHeaderLabel(column)}
+                          onSelect={() => {
+                            setSelectedColumnId(column.id)
+                            setInputValue("")
+                          }}
+                        >
+                          {getColumnHeaderLabel(column)}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </>
+                )}
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+      )}
+    </div>
   )
 }
 
@@ -587,7 +662,7 @@ export interface DataTableProps<TData extends object> {
   onRowClick?: (row: TData) => void
   className?: string
 
-  /** Shows a "Filter" toolbar button (drag-reorderable per-column filters). Default false. */
+  /** Shows a command-palette-style "Filter" menu (search a field, pick a value) with active filters as chips. Default false. */
   isFiltersEnable?: boolean
   /** Shows a "View" (column visibility) button in the toolbar. Default false. */
   isViewEnable?: boolean
@@ -673,7 +748,7 @@ export function DataTable<TData extends object>({
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex flex-wrap items-center gap-2">
               {isSortListEnable && <DataTableSortList table={table} />}
-              {isFiltersEnable && <DataTableFilterList table={table} />}
+              {isFiltersEnable && <DataTableFilterMenu table={table} />}
             </div>
             {isViewEnable && (
               <DataGridColumnVisibility
