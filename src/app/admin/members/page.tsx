@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { PlusIcon, Table2Icon, LayoutGridIcon, PhoneIcon, MailIcon, CalendarIcon } from "lucide-react"
-import { DataTable, type DataTableColumn } from "@/components/data-table"
+import { DataTable, type DataTableColumn, multiSelectFilterFn } from "@/components/data-table"
 import { DataGridColumnHeader } from "@/components/reui/data-grid/data-grid-column-header"
 import { Badge, type BadgeProps } from "@/components/reui/badge"
 import { Button } from "@/components/ui/button"
@@ -88,7 +88,15 @@ const columns: DataTableColumn<Member>[] = [
         {statusLabel[row.original.status]}
       </Badge>
     ),
-    meta: { headerTitle: "Status" },
+    filterFn: multiSelectFilterFn,
+    meta: {
+      headerTitle: "Status",
+      variant: "select",
+      options: (Object.keys(statusLabel) as MemberStatus[]).map((status) => ({
+        label: statusLabel[status],
+        value: status,
+      })),
+    },
   },
   {
     accessorKey: "joinDate",
