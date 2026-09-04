@@ -31,9 +31,9 @@ export default function AdminLayout({ children }: LayoutProps<"/admin">) {
   }
 
   return (
-    <SidebarProvider>
+    <SidebarProvider className="h-svh">
       <AppSidebar user={user} />
-      <SidebarInset>
+      <SidebarInset className="min-h-0">
         <header className="flex h-12 shrink-0 items-center justify-between gap-2 border-b px-4">
           <div className="flex items-center gap-2">
             <SidebarTrigger className="-ml-1" />
@@ -41,7 +41,7 @@ export default function AdminLayout({ children }: LayoutProps<"/admin">) {
           </div>
           <ThemeToggle />
         </header>
-        <main className="flex flex-1 flex-col gap-4 p-6">{children}</main>
+        <main className="flex min-h-0 flex-1 flex-col gap-4 p-6">{children}</main>
       </SidebarInset>
     </SidebarProvider>
   )

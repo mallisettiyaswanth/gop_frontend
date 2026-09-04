@@ -145,7 +145,7 @@ export default function MembersPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-6">
+    <div className="flex h-full min-h-0 flex-1 flex-col gap-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Members</h1>

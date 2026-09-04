@@ -74,14 +74,20 @@ export function DataTable<TData extends object>({
       isLoading={isLoading}
       emptyMessage={emptyMessage}
       onRowClick={onRowClick}
-      tableLayout={{ dense, rowBorder: true, headerBorder: true }}
+      tableLayout={{ dense, rowBorder: true, headerBorder: true, headerSticky: true }}
     >
-      <div className={cn("rounded-lg border", className)}>
-        <DataGridContainer>
-          <DataGridTable />
-        </DataGridContainer>
+      <div className={cn("flex min-h-0 flex-1 flex-col gap-3", className)}>
+        <div className="min-h-0 flex-1 overflow-auto rounded-lg border">
+          <DataGridContainer>
+            <DataGridTable />
+          </DataGridContainer>
+        </div>
+        {!hidePagination && (
+          <div className="shrink-0">
+            <DataGridPagination sizes={pageSizeOptions} />
+          </div>
+        )}
       </div>
-      {!hidePagination && <DataGridPagination sizes={pageSizeOptions} />}
     </DataGrid>
   )
 }
