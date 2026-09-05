@@ -305,7 +305,7 @@ export default function MembershipsPage() {
       )}
 
       <Sheet open={dialogOpen} onOpenChange={setDialogOpen}>
-        <SheetContent className="flex w-full flex-col sm:max-w-lg">
+        <SheetContent className="flex flex-col">
           <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex h-full flex-col overflow-hidden">
             <SheetHeader>
               <SheetTitle>{editingId ? "Edit plan" : "Add plan"}</SheetTitle>
