@@ -272,6 +272,10 @@ function MemberCardSkeleton() {
         <Skeleton className="h-3.5 w-40" />
         <Skeleton className="h-3.5 w-36" />
       </div>
+      <div className="flex items-center justify-between gap-2 border-t pt-3">
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="h-4 w-16" />
+      </div>
     </div>
   )
 }

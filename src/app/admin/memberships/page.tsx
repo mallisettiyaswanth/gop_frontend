@@ -276,11 +276,29 @@ function PlanCardSkeleton() {
     <div className="flex flex-col gap-4 rounded-xl border p-5">
       <div className="flex items-start justify-between gap-2">
         <Skeleton className="h-6 w-32" />
-        <Skeleton className="h-5 w-16" />
+        <Skeleton className="h-5 w-16 rounded-full" />
       </div>
+
+      <Skeleton className="h-4 w-full" />
+
+      <div className="flex flex-col gap-3 border-t border-border/40 pt-3">
+        <Skeleton className="h-8 w-full rounded-lg" />
+        <div className="flex flex-col gap-1">
+          <Skeleton className="h-8 w-28" />
+          <Skeleton className="h-3 w-36" />
+        </div>
+      </div>
+
       <div className="flex flex-col gap-2 border-t border-border/40 pt-3">
-        <Skeleton className="h-8 w-24" />
-        <Skeleton className="h-4 w-32" />
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-5/6" />
+        <Skeleton className="h-4 w-4/6" />
+        <Skeleton className="h-4 w-3/6" />
+      </div>
+
+      <div className="mt-auto flex items-center justify-between gap-2 border-t border-border/40 pt-3">
+        <Skeleton className="h-4 w-20" />
+        <Skeleton className="h-8 w-16 rounded-md" />
       </div>
     </div>
   )
@@ -431,7 +449,7 @@ export default function MembershipsPage() {
 
       {loading ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 3 }, (_, i) => (
+          {Array.from({ length: 5 }, (_, i) => (
             <PlanCardSkeleton key={i} />
           ))}
         </div>
