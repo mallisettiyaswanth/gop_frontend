@@ -126,9 +126,16 @@ function PlanPricing({ plan }: { plan: MembershipPlan }) {
   if (!base) return null
   const selected = sortedTiers.find((tier) => tier.label === selectedLabel) ?? base
   const isBase = selected.label === base.label
-  const equivalent = (base.price * selected.durationDays) / base.durationDays
+  // Every tier's price is normalized to a monthly rate so the headline
+  // number always means the same thing ("what would I pay per month"),
+  // whichever tab is selected — 3/6-month tiers just usually normalize to
+  // a lower rate, which is what the savings badge is measuring.
+  const monthlyRate = (selected.price * 30) / selected.durationDays
+  const baseMonthlyRate = (base.price * 30) / base.durationDays
   const savingsPercent =
-    !isBase && equivalent > 0 ? Math.round(((equivalent - selected.price) / equivalent) * 100) : 0
+    !isBase && baseMonthlyRate > 0
+      ? Math.round(((baseMonthlyRate - monthlyRate) / baseMonthlyRate) * 100)
+      : 0
   const hasSavings = savingsPercent > 0
 
   return (
@@ -167,17 +174,21 @@ function PlanPricing({ plan }: { plan: MembershipPlan }) {
         </div>
       )}
 
-      <div className="flex flex-wrap items-end gap-2">
-        {hasSavings && (
-          <span className="pb-1 text-sm text-muted-foreground line-through">
-            ₹{formatCurrency(equivalent)}
+      <div className="flex flex-col gap-0.5">
+        <div className="flex flex-wrap items-end gap-2">
+          <span className="text-3xl font-bold tracking-tight">
+            ₹{formatCurrency(Math.round(monthlyRate))}
           </span>
-        )}
-        <span className="text-3xl font-bold tracking-tight">₹{formatCurrency(selected.price)}</span>
-        <span className="pb-1 text-sm text-muted-foreground">/ {selected.label}</span>
-        {hasSavings && (
-          <span className="mb-1 rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-            Save {savingsPercent}%
+          <span className="pb-1 text-sm text-muted-foreground">/month</span>
+          {hasSavings && (
+            <span className="mb-1 rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+              Save {savingsPercent}%
+            </span>
+          )}
+        </div>
+        {!isBase && (
+          <span className="text-xs text-muted-foreground">
+            Billed ₹{formatCurrency(selected.price)} every {selected.label.toLowerCase()}
           </span>
         )}
       </div>
