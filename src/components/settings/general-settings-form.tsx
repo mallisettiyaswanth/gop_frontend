@@ -7,13 +7,13 @@ import { z } from "zod"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { SettingsSection, SettingsRow, SettingsFieldError } from "@/components/settings/settings-row"
 import { ThemeToggleGroup } from "@/components/settings/theme-toggle-group"
 import { getGymSettings, updateGymSettings, ApiError } from "@/lib/api"
 import { getStoredUser, getToken } from "@/lib/auth-storage"
+import { toast } from "@/lib/toast"
 
 const gymSettingsSchema = z.object({
   name: z.string().min(1, "Gym name is required"),
@@ -29,9 +29,6 @@ type GymSettingsValues = z.infer<typeof gymSettingsSchema>
 
 export function GeneralSettingsForm() {
   const [loading, setLoading] = useState(true)
-  const [loadError, setLoadError] = useState<string | null>(null)
-  const [formError, setFormError] = useState<string | null>(null)
-  const [saved, setSaved] = useState(false)
   const canEdit = getStoredUser()?.role === "SUPER_ADMIN"
 
   const {
@@ -57,7 +54,6 @@ export function GeneralSettingsForm() {
       const token = getToken()
       if (!token) return
       setLoading(true)
-      setLoadError(null)
       try {
         const settings = await getGymSettings(token)
         reset({
@@ -70,7 +66,7 @@ export function GeneralSettingsForm() {
           currency: settings.currency,
         })
       } catch (err) {
-        setLoadError(err instanceof ApiError ? err.message : "Couldn't load gym settings.")
+        toast.error(err instanceof ApiError ? err.message : "Couldn't load gym settings.")
       } finally {
         setLoading(false)
       }
@@ -81,10 +77,8 @@ export function GeneralSettingsForm() {
   async function onSubmit(values: GymSettingsValues) {
     const token = getToken()
     if (!token) return
-    setFormError(null)
-    setSaved(false)
-    try {
-      await updateGymSettings(token, {
+    await toast.promise(
+      updateGymSettings(token, {
         name: values.name,
         address: values.address || undefined,
         phone: values.phone || undefined,
@@ -92,11 +86,15 @@ export function GeneralSettingsForm() {
         gstNumber: values.gstNumber || undefined,
         timezone: values.timezone,
         currency: values.currency,
-      })
-      setSaved(true)
-    } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : "Something went wrong. Try again.")
-    }
+      }),
+      {
+        loading: "Saving gym settings…",
+        success: "Gym settings saved.",
+        error: (err) => (err instanceof ApiError ? err.message : "Something went wrong. Try again."),
+      }
+    ).catch(() => {
+      // toast.promise already surfaced the error; swallow so it doesn't reject the submit handler.
+    })
   }
 
   if (loading) {
@@ -112,23 +110,7 @@ export function GeneralSettingsForm() {
 
   return (
     <div>
-      {loadError && (
-        <Alert variant="destructive" className="mb-6">
-          <AlertDescription>{loadError}</AlertDescription>
-        </Alert>
-      )}
       <form onSubmit={handleSubmit(onSubmit)} noValidate>
-        {formError && (
-          <Alert variant="destructive" className="mb-4">
-            <AlertDescription>{formError}</AlertDescription>
-          </Alert>
-        )}
-        {saved && (
-          <Alert className="mb-4">
-            <AlertDescription>Gym settings saved.</AlertDescription>
-          </Alert>
-        )}
-
         <SettingsSection title="Gym profile">
           {!canEdit && (
             <p className="pb-2 text-sm text-muted-foreground">

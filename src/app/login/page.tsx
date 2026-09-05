@@ -9,12 +9,12 @@ import { z } from "zod"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Spinner } from "@/components/ui/spinner"
-import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Field, FieldGroup, FieldLabel, FieldError } from "@/components/ui/field"
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { getLoginMethod, loginWithPassword, loginWithPin, ApiError } from "@/lib/api"
 import { saveSession } from "@/lib/auth-storage"
+import { toast } from "@/lib/toast"
 
 const emailSchema = z.object({
   email: z.string().min(1, "Email is required").email("Enter a valid email address"),
@@ -53,7 +53,6 @@ export default function LoginPage() {
   const [step, setStep] = useState<"email" | "credential">("email")
   const [email, setEmail] = useState("")
   const [pinAvailable, setPinAvailable] = useState(false)
-  const [formError, setFormError] = useState<string | null>(null)
 
   const emailForm = useForm<EmailValues>({
     resolver: zodResolver(emailSchema),
@@ -75,7 +74,6 @@ export default function LoginPage() {
   }
 
   async function onEmailSubmit(values: EmailValues) {
-    setFormError(null)
     try {
       const { pinEnabled } = await getLoginMethod(values.email)
       setEmail(values.email)
@@ -83,18 +81,16 @@ export default function LoginPage() {
       credentialForm.reset({ mode: pinEnabled ? "pin" : "password", password: "", pin: "" })
       setStep("credential")
     } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : "Something went wrong. Try again.")
+      toast.error(err instanceof ApiError ? err.message : "Something went wrong. Try again.")
     }
   }
 
   function changeEmail() {
     setStep("email")
-    setFormError(null)
     credentialForm.reset({ mode: "password", password: "", pin: "" })
   }
 
   async function onCredentialSubmit(values: CredentialValues) {
-    setFormError(null)
     try {
       const result =
         values.mode === "password"
@@ -103,7 +99,7 @@ export default function LoginPage() {
       saveSession(result.accessToken, result.user)
       router.push("/admin")
     } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : "Something went wrong. Try again.")
+      toast.error(err instanceof ApiError ? err.message : "Something went wrong. Try again.")
     }
   }
 
@@ -142,11 +138,6 @@ export default function LoginPage() {
           {step === "email" ? (
             <form onSubmit={emailForm.handleSubmit(onEmailSubmit)} noValidate className="mt-8">
               <FieldGroup>
-                {formError && (
-                  <Alert variant="destructive">
-                    <AlertDescription>{formError}</AlertDescription>
-                  </Alert>
-                )}
                 <Field data-invalid={!!emailForm.formState.errors.email}>
                   <FieldLabel htmlFor="email">Email address</FieldLabel>
                   <Input
@@ -174,11 +165,6 @@ export default function LoginPage() {
               className="mt-8"
             >
               <FieldGroup>
-                {formError && (
-                  <Alert variant="destructive">
-                    <AlertDescription>{formError}</AlertDescription>
-                  </Alert>
-                )}
                 <Field>
                   <div className="flex items-center justify-between">
                     <FieldLabel>Email address</FieldLabel>

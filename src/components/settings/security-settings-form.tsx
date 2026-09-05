@@ -9,12 +9,12 @@ import { cn } from "cn"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { Switch } from "@/components/ui/switch"
-import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Input } from "@/components/ui/input"
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp"
 import { SettingsSection, SettingsRow, SettingsFieldError } from "@/components/settings/settings-row"
 import { getOwnProfile, updateOwnCredentials, ApiError } from "@/lib/api"
 import { getToken } from "@/lib/auth-storage"
+import { toast } from "@/lib/toast"
 
 const passwordCriteria = [
   { key: "length", label: "8+ characters", test: (v: string) => v.length >= 8 },
@@ -93,8 +93,6 @@ export function SecuritySettingsForm() {
   const [loading, setLoading] = useState(true)
   const [hasPin, setHasPin] = useState(false)
   const [pinEnabled, setPinEnabled] = useState(false)
-  const [formError, setFormError] = useState<string | null>(null)
-  const [saved, setSaved] = useState(false)
   const [newPasswordFocused, setNewPasswordFocused] = useState(false)
   const [newPasswordReadOnly, setNewPasswordReadOnly] = useState(true)
 
@@ -131,44 +129,39 @@ export function SecuritySettingsForm() {
   async function onSubmit(values: CredentialsValues) {
     const token = getToken()
     if (!token) return
-    setFormError(null)
-    setSaved(false)
 
     if (pinEnabled && !hasPin && !values.newPin) {
       setError("newPin", { message: "Set a PIN to enable PIN login." })
       return
     }
 
-    try {
-      const profile = await updateOwnCredentials(token, {
-        currentPassword: values.currentPassword || undefined,
-        newPassword: values.newPassword || undefined,
-        newPin: values.newPin || undefined,
-        pinEnabled,
+    await toast
+      .promise(
+        updateOwnCredentials(token, {
+          currentPassword: values.currentPassword || undefined,
+          newPassword: values.newPassword || undefined,
+          newPin: values.newPin || undefined,
+          pinEnabled,
+        }).then((profile) => {
+          setHasPin(profile.hasPin)
+          setPinEnabled(profile.pinEnabled)
+          reset()
+          return profile
+        }),
+        {
+          loading: "Updating credentials…",
+          success: "Your credentials have been updated.",
+          error: (err) => (err instanceof ApiError ? err.message : "Something went wrong. Try again."),
+        }
+      )
+      .catch(() => {
+        // toast.promise already surfaced the error; swallow so it doesn't reject the submit handler.
       })
-      setHasPin(profile.hasPin)
-      setPinEnabled(profile.pinEnabled)
-      setSaved(true)
-      reset()
-    } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : "Something went wrong. Try again.")
-    }
   }
 
   return (
     <div>
       <form onSubmit={handleSubmit(onSubmit)} noValidate>
-        {formError && (
-          <Alert variant="destructive" className="mb-4">
-            <AlertDescription>{formError}</AlertDescription>
-          </Alert>
-        )}
-        {saved && (
-          <Alert className="mb-4">
-            <AlertDescription>Your credentials have been updated.</AlertDescription>
-          </Alert>
-        )}
-
         <SettingsSection title="Password">
           <SettingsRow
             label="Current password"
