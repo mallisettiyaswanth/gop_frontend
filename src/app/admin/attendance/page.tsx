@@ -404,6 +404,7 @@ export default function AttendancePage() {
         enableColumnPinning
         initialColumnPinning={{ start: ["name"], end: ["count", "streak"] }}
         initialColumnVisibility={{ memberCode: false, phone: false }}
+        maxVisibleRows={13}
         serverSide
         rowCount={total}
         onQueryChange={setQuery}
