@@ -84,13 +84,16 @@ export function SettingsDialog({
 
   const trimmedQuery = query.trim()
   const lowerQuery = trimmedQuery.toLowerCase()
-  const results = trimmedQuery
+  const tabMatches = trimmedQuery ? nav.filter((item) => item.name.toLowerCase().includes(lowerQuery)) : []
+  const fieldMatches = trimmedQuery
     ? searchIndex.filter(
         (item) =>
           item.label.toLowerCase().includes(lowerQuery) ||
           item.keywords?.some((keyword) => keyword.includes(lowerQuery) || lowerQuery.includes(keyword))
       )
     : []
+  const hasResults = tabMatches.length > 0 || fieldMatches.length > 0
+  const firstResultTab = tabMatches[0]?.id ?? fieldMatches[0]?.tabId
 
   function selectResult(tabId: SettingsTab) {
     setTab(tabId)
@@ -136,9 +139,9 @@ export function SettingsDialog({
                   onFocus={() => setResultsOpen(true)}
                   onBlur={() => setTimeout(() => setResultsOpen(false), 150)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter" && results.length > 0) {
+                    if (e.key === "Enter" && firstResultTab) {
                       e.preventDefault()
-                      selectResult(results[0].tabId)
+                      selectResult(firstResultTab)
                     }
                     if (e.key === "Escape") {
                       setQuery("")
@@ -147,29 +150,43 @@ export function SettingsDialog({
                   }}
                 />
                 {resultsOpen && trimmedQuery && (
-                  <div className="absolute top-full left-0 z-20 mt-1 w-96 max-h-72 overflow-y-auto rounded-md border bg-popover p-1 shadow-md">
-                    {results.length > 0 ? (
-                      results.map((item) => {
-                        const navItem = nav.find((n) => n.id === item.tabId)!
-                        const Icon = navItem.icon
-                        return (
+                  <div className="absolute top-full left-0 z-20 mt-1 w-72 max-h-72 overflow-y-auto rounded-md border bg-popover p-1 shadow-md">
+                    {hasResults ? (
+                      <>
+                        {tabMatches.map((navItem) => (
                           <button
-                            key={`${item.tabId}-${item.label}`}
+                            key={navItem.id}
                             type="button"
                             onMouseDown={(e) => e.preventDefault()}
-                            onClick={() => selectResult(item.tabId)}
-                            className="flex w-full flex-col gap-0.5 rounded-sm px-3 py-1.5 text-left transition-colors hover:bg-accent"
+                            onClick={() => selectResult(navItem.id)}
+                            className="flex w-full items-center gap-2 rounded-sm px-3 py-1.5 text-left text-sm font-medium transition-colors hover:bg-accent"
                           >
-                            <span className="flex items-center gap-2 text-sm font-medium">
-                              <Icon className="size-4" />
-                              {navItem.name}
-                            </span>
-                            <span className="pl-6 text-sm">
-                              <HighlightedLabel label={item.label} query={trimmedQuery} />
-                            </span>
+                            <navItem.icon className="size-4" />
+                            <HighlightedLabel label={navItem.name} query={trimmedQuery} />
                           </button>
-                        )
-                      })
+                        ))}
+                        {fieldMatches.map((item) => {
+                          const navItem = nav.find((n) => n.id === item.tabId)!
+                          const Icon = navItem.icon
+                          return (
+                            <button
+                              key={`${item.tabId}-${item.label}`}
+                              type="button"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => selectResult(item.tabId)}
+                              className="flex w-full flex-col gap-0.5 rounded-sm px-3 py-1.5 text-left transition-colors hover:bg-accent"
+                            >
+                              <span className="flex items-center gap-2 text-sm font-medium">
+                                <Icon className="size-4" />
+                                {navItem.name}
+                              </span>
+                              <span className="pl-6 text-sm">
+                                <HighlightedLabel label={item.label} query={trimmedQuery} />
+                              </span>
+                            </button>
+                          )
+                        })}
+                      </>
                     ) : (
                       <p className="px-3 py-2 text-sm text-muted-foreground">Nothing found.</p>
                     )}
