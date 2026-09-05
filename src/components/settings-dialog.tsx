@@ -61,13 +61,13 @@ const searchIndex: SearchEntry[] = [
 
 function HighlightedLabel({ label, query }: { label: string; query: string }) {
   const index = label.toLowerCase().indexOf(query.toLowerCase())
-  if (index === -1 || !query) return <>{label}</>
+  if (index === -1 || !query) return <span>{label}</span>
   return (
-    <>
+    <span>
       {label.slice(0, index)}
       <span className="text-primary">{label.slice(index, index + query.length)}</span>
       {label.slice(index + query.length)}
-    </>
+    </span>
   )
 }
 
