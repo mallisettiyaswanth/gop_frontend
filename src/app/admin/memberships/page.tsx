@@ -63,6 +63,7 @@ const planSchema = z.object({
       z.object({
         label: z.string().min(1, "Name this price"),
         price: z.string().regex(/^\d+(\.\d{1,2})?$/, "Enter a valid amount"),
+        durationDays: z.string().regex(/^[1-9]\d*$/, "Enter days"),
       })
     )
     .min(1, "Add at least one price"),
@@ -80,7 +81,7 @@ const emptyValues: PlanFormValues = {
   category: "",
   level: "",
   description: "",
-  priceTiers: [{ label: "Monthly", price: "" }],
+  priceTiers: [{ label: "Monthly", price: "", durationDays: "30" }],
   joiningFee: "",
   taxPercent: "",
   visitLimit: "",
@@ -117,7 +118,9 @@ const columns: DataTableColumn<MembershipPlan>[] = [
   {
     id: "pricing",
     accessorFn: (row) =>
-      row.priceTiers.map((tier) => `${tier.label} ₹${formatCurrency(tier.price)}`).join(" · "),
+      row.priceTiers
+        .map((tier) => `${tier.label} ₹${formatCurrency(tier.price)} / ${tier.durationDays}d`)
+        .join(" · "),
     header: ({ column }) => <DataGridColumnHeader column={column} title="Pricing" />,
     meta: { headerTitle: "Pricing", skeleton: <Skeleton className="h-4 w-48" /> },
   },
@@ -166,7 +169,9 @@ function PriceHeadline({ plan }: { plan: MembershipPlan }) {
     return (
       <div className="flex items-baseline gap-1.5">
         <span className="text-3xl font-bold tracking-tight">₹{formatCurrency(only.price)}</span>
-        <span className="text-sm text-muted-foreground">{only.label}</span>
+        <span className="text-sm text-muted-foreground">
+          {only.label} · valid {only.durationDays}d
+        </span>
       </div>
     )
   }
@@ -175,7 +180,9 @@ function PriceHeadline({ plan }: { plan: MembershipPlan }) {
     <div className="flex flex-wrap items-end gap-5">
       {plan.priceTiers.map((tier, i) => (
         <div key={i} className="flex flex-col">
-          <span className="text-xs text-muted-foreground">{tier.label}</span>
+          <span className="text-xs text-muted-foreground">
+            {tier.label} · {tier.durationDays}d
+          </span>
           <span className="text-2xl font-bold tracking-tight">₹{formatCurrency(tier.price)}</span>
         </div>
       ))}
@@ -327,8 +334,12 @@ export default function MembershipsPage() {
       description: plan.description ?? "",
       priceTiers:
         plan.priceTiers.length > 0
-          ? plan.priceTiers.map((tier) => ({ label: tier.label, price: String(tier.price) }))
-          : [{ label: "Monthly", price: "" }],
+          ? plan.priceTiers.map((tier) => ({
+              label: tier.label,
+              price: String(tier.price),
+              durationDays: String(tier.durationDays),
+            }))
+          : [{ label: "Monthly", price: "", durationDays: "30" }],
       joiningFee: Number(plan.joiningFee) > 0 ? plan.joiningFee : "",
       taxPercent: Number(plan.taxPercent) > 0 ? plan.taxPercent : "",
       visitLimit: plan.visitLimit != null ? String(plan.visitLimit) : "",
@@ -347,7 +358,11 @@ export default function MembershipsPage() {
       category: values.category || undefined,
       level: values.level || undefined,
       description: values.description || undefined,
-      priceTiers: values.priceTiers.map((tier) => ({ label: tier.label, price: Number(tier.price) })),
+      priceTiers: values.priceTiers.map((tier) => ({
+        label: tier.label,
+        price: Number(tier.price),
+        durationDays: Number(tier.durationDays),
+      })),
       joiningFee: values.joiningFee ? Number(values.joiningFee) : undefined,
       taxPercent: values.taxPercent ? Number(values.taxPercent) : undefined,
       visitLimit: values.visitLimit ? Number(values.visitLimit) : undefined,
@@ -505,7 +520,7 @@ export default function MembershipsPage() {
                 <FieldLabel>Pricing</FieldLabel>
                 <FieldDescription>
                   Add as many price tiers as this plan needs — name each one however your gym
-                  prices it.
+                  prices it, and set how many days that purchase keeps the membership valid for.
                 </FieldDescription>
                 <div className="flex flex-col gap-2">
                   {priceTierFields.map((field, index) => (
@@ -518,14 +533,23 @@ export default function MembershipsPage() {
                         />
                         <FieldError errors={[errors.priceTiers?.[index]?.label]} />
                       </div>
-                      <div className="w-32">
+                      <div className="w-28">
                         <Input
                           inputMode="decimal"
-                          placeholder="0.00"
+                          placeholder="Price"
                           aria-invalid={!!errors.priceTiers?.[index]?.price}
                           {...register(`priceTiers.${index}.price` as const)}
                         />
                         <FieldError errors={[errors.priceTiers?.[index]?.price]} />
+                      </div>
+                      <div className="w-24">
+                        <Input
+                          inputMode="numeric"
+                          placeholder="Days"
+                          aria-invalid={!!errors.priceTiers?.[index]?.durationDays}
+                          {...register(`priceTiers.${index}.durationDays` as const)}
+                        />
+                        <FieldError errors={[errors.priceTiers?.[index]?.durationDays]} />
                       </div>
                       <Button
                         type="button"
@@ -544,7 +568,7 @@ export default function MembershipsPage() {
                     variant="outline"
                     size="sm"
                     className="self-start"
-                    onClick={() => appendPriceTier({ label: "", price: "" })}
+                    onClick={() => appendPriceTier({ label: "", price: "", durationDays: "" })}
                   >
                     <PlusIcon />
                     Add price

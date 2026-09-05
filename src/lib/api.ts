@@ -122,6 +122,7 @@ export async function createMember(token: string, input: CreateMemberInput): Pro
 export type PriceTier = {
   label: string
   price: number
+  durationDays: number
 }
 
 export type MembershipPlan = {
