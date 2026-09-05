@@ -151,6 +151,51 @@ export async function listMembers(
   return parseJsonOrThrow(res)
 }
 
+export type AttendanceGridMember = {
+  id: string
+  memberCode: string
+  name: string
+  phone: string
+  /** Dates (YYYY-MM-DD) within the requested range this member attended. */
+  attendedDates: string[]
+  presentCount: number
+  /** All-time streak: weeks with 5+ distinct attendance days. */
+  streak: number
+}
+
+export type AttendanceGridParams = {
+  /** Inclusive range start, YYYY-MM-DD. */
+  from: string
+  /** Inclusive range end, YYYY-MM-DD. */
+  to: string
+  search?: string
+  skip?: number
+  limit?: number
+}
+
+export type AttendanceGridResult = {
+  data: AttendanceGridMember[]
+  total: number
+  skip: number
+  limit: number
+  from: string
+  to: string
+  /** Number of days spanned by from..to, inclusive. */
+  totalDays: number
+}
+
+export async function getAttendanceGrid(
+  token: string,
+  params: AttendanceGridParams
+): Promise<AttendanceGridResult> {
+  const query = new URLSearchParams()
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== "") query.set(key, String(value))
+  }
+  const res = await authFetch(token, `/attendance?${query.toString()}`)
+  return parseJsonOrThrow(res)
+}
+
 export async function createMember(token: string, input: CreateMemberInput): Promise<Member> {
   const res = await authFetch(token, "/members", {
     method: "POST",
