@@ -66,7 +66,7 @@ export default function AdminLayout({ children }: LayoutProps<"/admin">) {
             </BreadcrumbList>
           </Breadcrumb>
         </header>
-        <main className="flex min-h-0 flex-1 flex-col gap-4 p-6">{children}</main>
+        <main className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-6">{children}</main>
       </SidebarInset>
     </SidebarProvider>
   )

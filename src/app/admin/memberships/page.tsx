@@ -134,28 +134,36 @@ function PlanPricing({ plan }: { plan: MembershipPlan }) {
   return (
     <div className="flex flex-col gap-3">
       {sortedTiers.length > 1 && (
-        <div className="flex gap-1 rounded-lg bg-muted/50 p-1">
-          {sortedTiers.map((tier) => (
-            <button
-              key={tier.label}
-              type="button"
-              onClick={() => setSelectedLabel(tier.label)}
-              className={cn(
-                "relative flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors",
-                tier.label === selectedLabel
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              {tier.label}
-              {tier.label === plan.highlightedTier && (
-                <span
-                  className="absolute -top-1 -right-1 size-1.5 rounded-full bg-emerald-500"
-                  aria-hidden
-                />
-              )}
-            </button>
-          ))}
+        <div className="flex gap-1 pt-2.5">
+          {sortedTiers.map((tier) => {
+            const isSelected = tier.label === selectedLabel
+            const isHighlighted = tier.label === plan.highlightedTier
+            return (
+              <div key={tier.label} className="relative flex-1">
+                {isHighlighted && (
+                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-full bg-emerald-500 px-1.5 py-0.5 text-[9px] leading-none font-semibold whitespace-nowrap text-white">
+                    Popular
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setSelectedLabel(tier.label)}
+                  className={cn(
+                    "w-full rounded-md px-2 py-1.5 text-xs font-medium transition-colors",
+                    isSelected
+                      ? isHighlighted
+                        ? "bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-500/50 dark:text-emerald-400"
+                        : "bg-muted text-foreground"
+                      : isHighlighted
+                        ? "bg-emerald-500/5 text-emerald-700 ring-1 ring-emerald-500/30 hover:bg-emerald-500/10 dark:text-emerald-400"
+                        : "bg-muted/50 text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {tier.label}
+                </button>
+              </div>
+            )
+          })}
         </div>
       )}
 
