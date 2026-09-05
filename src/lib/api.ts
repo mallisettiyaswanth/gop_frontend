@@ -119,6 +119,67 @@ export async function createMember(token: string, input: CreateMemberInput): Pro
   return parseJsonOrThrow(res)
 }
 
+export type MembershipPlan = {
+  id: string
+  name: string
+  level: string | null
+  description: string | null
+  dailyPrice: string | null
+  monthlyPrice: string | null
+  yearlyPrice: string | null
+  joiningFee: string
+  taxPercent: string
+  visitLimit: number | null
+  features: string[]
+  isActive: boolean
+  sortOrder: number
+  createdAt: string
+  updatedAt: string
+}
+
+export type MembershipPlanInput = {
+  name: string
+  level?: string
+  description?: string
+  dailyPrice?: number
+  monthlyPrice?: number
+  yearlyPrice?: number
+  joiningFee?: number
+  taxPercent?: number
+  visitLimit?: number
+  features?: string[]
+  isActive?: boolean
+  sortOrder?: number
+}
+
+export async function listMembershipPlans(token: string): Promise<MembershipPlan[]> {
+  const res = await authFetch(token, "/membership-plans")
+  return parseJsonOrThrow(res)
+}
+
+export async function createMembershipPlan(
+  token: string,
+  input: MembershipPlanInput
+): Promise<MembershipPlan> {
+  const res = await authFetch(token, "/membership-plans", {
+    method: "POST",
+    body: JSON.stringify(input),
+  })
+  return parseJsonOrThrow(res)
+}
+
+export async function updateMembershipPlan(
+  token: string,
+  id: string,
+  input: Partial<MembershipPlanInput>
+): Promise<MembershipPlan> {
+  const res = await authFetch(token, `/membership-plans/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  })
+  return parseJsonOrThrow(res)
+}
+
 export type GymSettings = {
   id: string
   name: string
