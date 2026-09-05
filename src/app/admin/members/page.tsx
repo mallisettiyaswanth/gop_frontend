@@ -256,7 +256,7 @@ export default function MembersPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [view, setView] = useState<"table" | "cards">("table")
-  const [query, setQuery] = useState<DataTableServerQuery>({ skip: 0, limit: 10, filters: [] })
+  const [query, setQuery] = useState<DataTableServerQuery>({ skip: 0, limit: 25, filters: [] })
 
   const {
     register,
@@ -486,6 +486,7 @@ export default function MembersPage() {
           getRowId={(row) => row.id}
           isLoading={loading}
           emptyMessage="No members yet."
+          pageSize={25}
           isFiltersEnable
           isSortListEnable
           isViewEnable
