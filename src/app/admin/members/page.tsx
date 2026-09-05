@@ -13,6 +13,7 @@ import {
   MailIcon,
   CalendarIcon,
   FlameIcon,
+  InfoIcon,
 } from "lucide-react"
 import {
   DataTable,
@@ -27,6 +28,7 @@ import { Spinner } from "@/components/ui/spinner"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Field, FieldGroup, FieldLabel, FieldError } from "@/components/ui/field"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { Input } from "@/components/ui/input"
 import {
   Dialog,
@@ -158,8 +160,20 @@ function StreakCell({ streak }: { streak: number }) {
         className={`size-4 ${streak > 0 ? "text-orange-500" : "text-muted-foreground/40"}`}
       />
       <span className="font-medium">{streak}</span>
-      <span className="text-xs text-muted-foreground">{streak === 1 ? "week" : "weeks"}</span>
     </div>
+  )
+}
+
+function StreakInfo() {
+  return (
+    <Tooltip>
+      <TooltipTrigger>
+        <InfoIcon className="size-3.5 text-muted-foreground" />
+      </TooltipTrigger>
+      <TooltipContent>
+        Streak: number of weeks the member attended the gym on 5 or more days.
+      </TooltipContent>
+    </Tooltip>
   )
 }
 
@@ -360,7 +374,16 @@ export default function MembersPage() {
     },
     {
       accessorKey: "streak",
-      header: ({ column }) => <DataGridColumnHeader column={column} title="Streak" />,
+      header: ({ column }) => (
+        <div className="flex items-center gap-1">
+          <DataGridColumnHeader
+            column={column}
+            title=""
+            icon={<FlameIcon className="size-3.5" />}
+          />
+          <StreakInfo />
+        </div>
+      ),
       cell: ({ row }) => <StreakCell streak={row.original.streak} />,
       enableSorting: false,
       enableColumnFilter: false,
