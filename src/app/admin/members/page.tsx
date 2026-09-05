@@ -130,13 +130,13 @@ function PlanCell({ member }: { member: Member }) {
   }
   return (
     <div className="flex min-w-[110px] items-center gap-1.5 text-sm font-medium">
-      {membership.plan.color && (
+      {/* {membership.plan.color && (
         <span
           className="size-2 shrink-0 rounded-full"
           style={{ backgroundColor: membership.plan.color }}
           aria-hidden
         />
-      )}
+      )} */}
       <span>{membership.plan.name.split(" ")[0]}</span>
     </div>
   )
@@ -172,6 +172,20 @@ function StreakInfo() {
       </TooltipTrigger>
       <TooltipContent>
         Streak: number of weeks the member attended the gym on 5 or more days.
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
+function MembershipInfo() {
+  return (
+    <Tooltip>
+      <TooltipTrigger>
+        <InfoIcon className="size-3.5 text-muted-foreground" />
+      </TooltipTrigger>
+      <TooltipContent>
+        Row color matches the member&apos;s plan — set a plan&apos;s highlight color on the
+        Memberships page.
       </TooltipContent>
     </Tooltip>
   )
@@ -343,7 +357,12 @@ export default function MembersPage() {
     {
       id: "membership",
       accessorFn: (row) => row.membership?.planId ?? "",
-      header: ({ column }) => <DataGridColumnHeader column={column} title="Membership" />,
+      header: ({ column }) => (
+        <div className="flex items-center gap-1">
+          <DataGridColumnHeader column={column} title="Membership" />
+          <MembershipInfo />
+        </div>
+      ),
       cell: ({ row }) => <PlanCell member={row.original} />,
       enableSorting: false,
       filterFn: multiSelectFilterFn,
