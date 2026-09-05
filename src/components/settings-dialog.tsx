@@ -34,20 +34,29 @@ const nav = [
 
 type SettingsTab = (typeof nav)[number]["id"]
 
-const searchIndex: { tabId: SettingsTab; label: string }[] = [
-  { tabId: "general", label: "Gym name" },
-  { tabId: "general", label: "Phone" },
-  { tabId: "general", label: "Email" },
-  { tabId: "general", label: "GST number" },
-  { tabId: "general", label: "Timezone" },
-  { tabId: "general", label: "Currency" },
-  { tabId: "general", label: "Address" },
-  { tabId: "general", label: "Appearance" },
+type SearchEntry = { tabId: SettingsTab; label: string; keywords?: string[] }
+
+// `keywords` are extra terms a user might search for that never appear in the
+// UI (synonyms, related concepts) — they widen matching without changing
+// what's actually displayed in the results list.
+const searchIndex: SearchEntry[] = [
+  { tabId: "general", label: "Gym name", keywords: ["business name"] },
+  { tabId: "general", label: "Phone", keywords: ["contact number", "mobile"] },
+  { tabId: "general", label: "Email", keywords: ["contact email"] },
+  { tabId: "general", label: "GST number", keywords: ["tax id", "tax number"] },
+  { tabId: "general", label: "Timezone", keywords: ["time zone"] },
+  { tabId: "general", label: "Currency", keywords: ["money"] },
+  { tabId: "general", label: "Address", keywords: ["location"] },
+  {
+    tabId: "general",
+    label: "Appearance",
+    keywords: ["theme", "dark mode", "light mode", "dark", "light", "system theme", "color scheme"],
+  },
   { tabId: "security", label: "Current password" },
-  { tabId: "security", label: "New password" },
-  { tabId: "security", label: "Enable PIN login" },
-  { tabId: "security", label: "Change PIN" },
-  { tabId: "security", label: "Set PIN" },
+  { tabId: "security", label: "New password", keywords: ["change password", "reset password"] },
+  { tabId: "security", label: "Enable PIN login", keywords: ["pin", "two factor", "2fa"] },
+  { tabId: "security", label: "Change PIN", keywords: ["pin"] },
+  { tabId: "security", label: "Set PIN", keywords: ["pin"] },
 ]
 
 function HighlightedLabel({ label, query }: { label: string; query: string }) {
@@ -74,8 +83,13 @@ export function SettingsDialog({
   const [resultsOpen, setResultsOpen] = React.useState(false)
 
   const trimmedQuery = query.trim()
+  const lowerQuery = trimmedQuery.toLowerCase()
   const results = trimmedQuery
-    ? searchIndex.filter((item) => item.label.toLowerCase().includes(trimmedQuery.toLowerCase()))
+    ? searchIndex.filter(
+        (item) =>
+          item.label.toLowerCase().includes(lowerQuery) ||
+          item.keywords?.some((keyword) => keyword.includes(lowerQuery) || lowerQuery.includes(keyword))
+      )
     : []
 
   function selectResult(tabId: SettingsTab) {
@@ -132,29 +146,33 @@ export function SettingsDialog({
                     }
                   }}
                 />
-                {resultsOpen && results.length > 0 && (
-                  <div className="absolute top-full left-0 z-20 mt-1 w-full max-h-72 overflow-y-auto rounded-md border bg-popover py-1 shadow-md">
-                    {results.map((item) => {
-                      const navItem = nav.find((n) => n.id === item.tabId)!
-                      const Icon = navItem.icon
-                      return (
-                        <button
-                          key={`${item.tabId}-${item.label}`}
-                          type="button"
-                          onMouseDown={(e) => e.preventDefault()}
-                          onClick={() => selectResult(item.tabId)}
-                          className="flex w-full flex-col gap-0.5 rounded-sm px-3 py-1.5 text-left transition-colors hover:bg-accent"
-                        >
-                          <span className="flex items-center gap-2 text-sm font-medium">
-                            <Icon className="size-4" />
-                            {navItem.name}
-                          </span>
-                          <span className="pl-6 text-sm">
-                            <HighlightedLabel label={item.label} query={trimmedQuery} />
-                          </span>
-                        </button>
-                      )
-                    })}
+                {resultsOpen && trimmedQuery && (
+                  <div className="absolute top-full left-0 z-20 mt-1 w-96 max-h-72 overflow-y-auto rounded-md border bg-popover p-1 shadow-md">
+                    {results.length > 0 ? (
+                      results.map((item) => {
+                        const navItem = nav.find((n) => n.id === item.tabId)!
+                        const Icon = navItem.icon
+                        return (
+                          <button
+                            key={`${item.tabId}-${item.label}`}
+                            type="button"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => selectResult(item.tabId)}
+                            className="flex w-full flex-col gap-0.5 rounded-sm px-3 py-1.5 text-left transition-colors hover:bg-accent"
+                          >
+                            <span className="flex items-center gap-2 text-sm font-medium">
+                              <Icon className="size-4" />
+                              {navItem.name}
+                            </span>
+                            <span className="pl-6 text-sm">
+                              <HighlightedLabel label={item.label} query={trimmedQuery} />
+                            </span>
+                          </button>
+                        )
+                      })
+                    ) : (
+                      <p className="px-3 py-2 text-sm text-muted-foreground">Nothing found.</p>
+                    )}
                   </div>
                 )}
               </div>
