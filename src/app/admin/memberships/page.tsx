@@ -1,19 +1,11 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { Controller, useFieldArray, useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import {
-  PlusIcon,
-  XIcon,
-  CheckIcon,
-  PencilIcon,
-  Table2Icon,
-  LayoutGridIcon,
-} from "lucide-react"
-import { DataTable, type DataTableColumn, multiSelectFilterFn } from "@/components/data-table"
-import { DataGridColumnHeader } from "@/components/reui/data-grid/data-grid-column-header"
+import { PlusIcon, XIcon, CheckIcon, PencilIcon, UsersIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -100,111 +92,62 @@ function formatCurrency(value: number | string) {
   return Number(value).toLocaleString(undefined, { maximumFractionDigits: 2 })
 }
 
-const columns: DataTableColumn<MembershipPlan>[] = [
-  {
-    accessorKey: "name",
-    header: ({ column }) => <DataGridColumnHeader column={column} title="Plan" />,
-    cell: ({ row }) => (
-      <div className="flex items-center gap-2">
-        {row.original.color && (
-          <span
-            className="size-2.5 shrink-0 rounded-full"
-            style={{ backgroundColor: row.original.color }}
-            aria-hidden
-          />
-        )}
-        <span className="font-medium">{row.original.name}</span>
-        {row.original.level && (
-          <Badge variant="secondary" className="shrink-0">
-            {row.original.level}
-          </Badge>
-        )}
-      </div>
-    ),
-    meta: { headerTitle: "Plan", skeleton: <Skeleton className="h-4 w-32" /> },
-  },
-  {
-    accessorKey: "category",
-    header: ({ column }) => <DataGridColumnHeader column={column} title="Category" />,
-    cell: ({ row }) => row.original.category ?? "—",
-    meta: { headerTitle: "Category", skeleton: <Skeleton className="h-4 w-24" /> },
-  },
-  {
-    id: "pricing",
-    accessorFn: (row) =>
-      row.priceTiers
-        .map((tier) => `${tier.label} ₹${formatCurrency(tier.price)} / ${tier.durationDays}d`)
-        .join(" · "),
-    header: ({ column }) => <DataGridColumnHeader column={column} title="Pricing" />,
-    meta: { headerTitle: "Pricing", skeleton: <Skeleton className="h-4 w-48" /> },
-  },
-  {
-    accessorKey: "joiningFee",
-    header: ({ column }) => <DataGridColumnHeader column={column} title="Joining fee" />,
-    cell: ({ row }) =>
-      Number(row.original.joiningFee) > 0 ? `₹${formatCurrency(row.original.joiningFee)}` : "—",
-    meta: { headerTitle: "Joining fee", skeleton: <Skeleton className="h-4 w-16" /> },
-  },
-  {
-    accessorKey: "visitLimit",
-    header: ({ column }) => <DataGridColumnHeader column={column} title="Visit limit" />,
-    cell: ({ row }) => row.original.visitLimit ?? "Unlimited",
-    meta: { headerTitle: "Visit limit", skeleton: <Skeleton className="h-4 w-16" /> },
-  },
-  {
-    accessorKey: "isActive",
-    header: ({ column }) => <DataGridColumnHeader column={column} title="Status" />,
-    cell: ({ row }) => (
-      <Badge variant={row.original.isActive ? "success-light" : "destructive-light"}>
-        {row.original.isActive ? "Active" : "Inactive"}
-      </Badge>
-    ),
-    filterFn: multiSelectFilterFn,
-    meta: {
-      headerTitle: "Status",
-      variant: "select",
-      options: [
-        { label: "Active", value: "true" },
-        { label: "Inactive", value: "false" },
-      ],
-      skeleton: <Skeleton className="h-5 w-16 rounded-full" />,
-    },
-  },
-]
-
-function PriceHeadline({ plan }: { plan: MembershipPlan }) {
+/**
+ * Pricing block: the shortest tier (e.g. Monthly) is the base rate everything
+ * else is measured against. Every longer tier shows what it would have cost
+ * at that base rate (crossed out) next to what it actually costs, plus the
+ * resulting "Save N%" — so a gym's discount for committing longer is visible
+ * at a glance instead of just three unrelated numbers.
+ */
+function PlanPricing({ plan }: { plan: MembershipPlan }) {
   if (plan.priceTiers.length === 0) return null
 
-  // A single price gets the big headline treatment; several tiers on the
-  // same plan (e.g. Monthly + 3 Months + Yearly) are shown side by side at
-  // equal weight instead of picking one as "primary" and shrinking the rest.
-  if (plan.priceTiers.length === 1) {
-    const [only] = plan.priceTiers
-    return (
-      <div className="flex items-baseline gap-1.5">
-        <span className="text-3xl font-bold tracking-tight">₹{formatCurrency(only.price)}</span>
-        <span className="text-sm text-muted-foreground">
-          {only.label} · valid {only.durationDays}d
-        </span>
-      </div>
-    )
-  }
+  const [base, ...rest] = [...plan.priceTiers].sort((a, b) => a.durationDays - b.durationDays)
 
   return (
-    <div className="flex flex-wrap items-end gap-5">
-      {plan.priceTiers.map((tier, i) => (
-        <div key={i} className="flex flex-col">
-          <span className="text-xs text-muted-foreground">
-            {tier.label} · {tier.durationDays}d
-          </span>
-          <span className="text-2xl font-bold tracking-tight">₹{formatCurrency(tier.price)}</span>
+    <div className="flex flex-col gap-3">
+      <div className="flex items-baseline gap-1.5">
+        <span className="text-3xl font-bold tracking-tight">₹{formatCurrency(base.price)}</span>
+        <span className="text-sm text-muted-foreground">/ {base.label}</span>
+      </div>
+
+      {rest.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          {rest.map((tier) => {
+            const equivalent = (base.price * tier.durationDays) / base.durationDays
+            const savingsPercent = equivalent > 0 ? Math.round(((equivalent - tier.price) / equivalent) * 100) : 0
+            const hasSavings = savingsPercent > 0
+
+            return (
+              <div
+                key={tier.label}
+                className="flex items-center justify-between gap-3 rounded-lg bg-muted/40 px-3 py-2"
+              >
+                <span className="text-sm font-medium">{tier.label}</span>
+                <div className="flex items-center gap-2">
+                  {hasSavings && (
+                    <span className="text-xs text-muted-foreground line-through">
+                      ₹{formatCurrency(equivalent)}
+                    </span>
+                  )}
+                  <span className="text-sm font-semibold">₹{formatCurrency(tier.price)}</span>
+                  {hasSavings && (
+                    <span className="rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                      Save {savingsPercent}%
+                    </span>
+                  )}
+                </div>
+              </div>
+            )
+          })}
         </div>
-      ))}
+      )}
     </div>
   )
 }
 
 function PlanCard({ plan, onEdit }: { plan: MembershipPlan; onEdit: () => void }) {
+  const router = useRouter()
   const extras = [
     Number(plan.joiningFee) > 0 && `Joining fee ₹${formatCurrency(plan.joiningFee)}`,
     Number(plan.taxPercent) > 0 && `Tax ${plan.taxPercent}%`,
@@ -248,7 +191,7 @@ function PlanCard({ plan, onEdit }: { plan: MembershipPlan; onEdit: () => void }
       {plan.description && <p className="text-sm text-muted-foreground">{plan.description}</p>}
 
       <div className="border-t border-border/40 pt-3">
-        <PriceHeadline plan={plan} />
+        <PlanPricing plan={plan} />
       </div>
 
       {extras.length > 0 && (
@@ -275,10 +218,20 @@ function PlanCard({ plan, onEdit }: { plan: MembershipPlan; onEdit: () => void }
         </ul>
       )}
 
-      <Button variant="outline" size="sm" className="mt-auto" onClick={onEdit}>
-        <PencilIcon />
-        Edit
-      </Button>
+      <div className="mt-auto flex items-center justify-between gap-2 border-t border-border/40 pt-3">
+        <button
+          type="button"
+          onClick={() => router.push(`/admin/members?planId=${plan.id}`)}
+          className="flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <UsersIcon className="size-4" />
+          {plan.memberCount} {plan.memberCount === 1 ? "member" : "members"}
+        </button>
+        <Button variant="outline" size="sm" onClick={onEdit}>
+          <PencilIcon />
+          Edit
+        </Button>
+      </div>
     </div>
   )
 }
@@ -303,7 +256,6 @@ export default function MembershipsPage() {
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [view, setView] = useState<"table" | "cards">("cards")
 
   const {
     register,
@@ -427,46 +379,13 @@ export default function MembershipsPage() {
             Manage the plans members can sign up for.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center rounded-md border p-0.5">
-            <Button
-              variant={view === "table" ? "secondary" : "ghost"}
-              size="icon-sm"
-              aria-label="Table view"
-              onClick={() => setView("table")}
-            >
-              <Table2Icon />
-            </Button>
-            <Button
-              variant={view === "cards" ? "secondary" : "ghost"}
-              size="icon-sm"
-              aria-label="Card view"
-              onClick={() => setView("cards")}
-            >
-              <LayoutGridIcon />
-            </Button>
-          </div>
-          <Button onClick={openAddDialog}>
-            <PlusIcon />
-            Add plan
-          </Button>
-        </div>
+        <Button onClick={openAddDialog}>
+          <PlusIcon />
+          Add plan
+        </Button>
       </div>
 
-      {view === "table" ? (
-        <DataTable
-          columns={columns}
-          data={plans}
-          getRowId={(row) => row.id}
-          isLoading={loading}
-          emptyMessage="No membership plans yet."
-          isFiltersEnable
-          isSortListEnable
-          isViewEnable
-          enableColumnPinning
-          onRowClick={openEditDialog}
-        />
-      ) : loading ? (
+      {loading ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 3 }, (_, i) => (
             <PlanCardSkeleton key={i} />

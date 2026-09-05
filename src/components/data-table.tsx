@@ -718,6 +718,13 @@ export interface DataTableProps<TData extends object> {
   /** Column visibility on first render, e.g. `{ memberCode: false }` to start with a column hidden. Still user-adjustable via the View menu. */
   initialColumnVisibility?: Record<string, boolean>
   /**
+   * Column filters applied on first render, e.g. from a URL param —
+   * `[{ id: "status", value: ["ACTIVE"] }]`. Renders as a normal filter chip
+   * (removable, editable) rather than a hidden constraint. In `serverSide`
+   * mode this also drives the very first `onQueryChange` call.
+   */
+  initialColumnFilters?: { id: string; value: unknown }[]
+  /**
    * Caps the table at its parent's height and scrolls the rows internally
    * (both directions) instead of growing the page — pair with a parent
    * that actually constrains height (e.g. a flex column with `h-full
@@ -771,6 +778,7 @@ export function DataTable<TData extends object>({
   enableColumnPinning = false,
   initialColumnPinning,
   initialColumnVisibility,
+  initialColumnFilters,
   fillHeight = false,
   maxVisibleRows,
   tableLayout: tableLayoutOverrides,
@@ -780,7 +788,7 @@ export function DataTable<TData extends object>({
 }: DataTableProps<TData>) {
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize })
   const [sorting, setSorting] = useState<SortingState>([])
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>(initialColumnFilters ?? [])
 
   const table = useTable({
     features: dataGridFeatures,

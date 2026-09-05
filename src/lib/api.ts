@@ -182,6 +182,8 @@ export type MembershipPlan = {
   sortOrder: number
   createdAt: string
   updatedAt: string
+  /** Members currently on an active membership under this plan. */
+  memberCount: number
 }
 
 export type MembershipPlanInput = {

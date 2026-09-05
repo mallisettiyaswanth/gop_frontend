@@ -1,7 +1,8 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react"
 import type { CSSProperties } from "react"
+import { useSearchParams } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -275,7 +276,14 @@ function MemberCardSkeleton() {
   )
 }
 
-export default function MembersPage() {
+function MembersPageContent() {
+  const searchParams = useSearchParams()
+  const planIdParam = searchParams.get("planId")
+  const initialFilters = useMemo(
+    () => (planIdParam ? [{ id: "membership", value: [planIdParam] }] : []),
+    [planIdParam]
+  )
+
   const [members, setMembers] = useState<Member[]>([])
   const [total, setTotal] = useState(0)
   const [plans, setPlans] = useState<MembershipPlan[]>([])
@@ -284,7 +292,11 @@ export default function MembersPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [view, setView] = useState<"table" | "cards">("table")
-  const [query, setQuery] = useState<DataTableServerQuery>({ skip: 0, limit: 25, filters: [] })
+  const [query, setQuery] = useState<DataTableServerQuery>(() => ({
+    skip: 0,
+    limit: 25,
+    filters: initialFilters,
+  }))
 
   const {
     register,
@@ -535,6 +547,7 @@ export default function MembersPage() {
           enableColumnPinning
           initialColumnPinning={{ start: ["rowNumber", "name"] }}
           initialColumnVisibility={{ memberCode: false }}
+          initialColumnFilters={initialFilters}
           maxVisibleRows={13}
           getRowStyle={getMemberRowStyle}
           serverSide
@@ -609,5 +622,13 @@ export default function MembersPage() {
         </DialogContent>
       </Dialog>
     </div>
+  )
+}
+
+export default function MembersPage() {
+  return (
+    <Suspense>
+      <MembersPageContent />
+    </Suspense>
   )
 }
