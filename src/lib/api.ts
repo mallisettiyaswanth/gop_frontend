@@ -174,9 +174,12 @@ export type MembershipPlan = {
   color: string | null
   description: string | null
   priceTiers: PriceTier[]
+  /** Label of the priceTiers entry featured as "most popular" on the card. */
+  highlightedTier: string | null
   joiningFee: string
   taxPercent: string
   visitLimit: number | null
+  /** This plan's own features, on top of whatever includesPlan already covers. */
   features: string[]
   isActive: boolean
   sortOrder: number
@@ -184,6 +187,8 @@ export type MembershipPlan = {
   updatedAt: string
   /** Members currently on an active membership under this plan. */
   memberCount: number
+  includesPlanId: string | null
+  includesPlan: { id: string; name: string } | null
 }
 
 export type MembershipPlanInput = {
@@ -193,6 +198,8 @@ export type MembershipPlanInput = {
   color?: string
   description?: string
   priceTiers: PriceTier[]
+  highlightedTier?: string
+  includesPlanId?: string
   joiningFee?: number
   taxPercent?: number
   visitLimit?: number

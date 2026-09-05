@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Controller, useFieldArray, useForm } from "react-hook-form"
+import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { PlusIcon, XIcon, CheckIcon, PencilIcon, UsersIcon } from "lucide-react"
@@ -22,6 +22,14 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/reui/badge"
 import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
   Sheet,
   SheetContent,
   SheetHeader,
@@ -38,6 +46,7 @@ import {
 } from "@/lib/api"
 import { getToken } from "@/lib/auth-storage"
 import { toast } from "@/lib/toast"
+import { cn } from "@/lib/utils"
 
 const optionalAmount = z.union([
   z.literal(""),
@@ -65,6 +74,8 @@ const planSchema = z.object({
       })
     )
     .min(1, "Add at least one price"),
+  highlightedTier: z.string(),
+  includesPlanId: z.string(),
   joiningFee: optionalAmount,
   taxPercent: optionalAmount,
   visitLimit: optionalWholeNumber,
@@ -81,6 +92,8 @@ const emptyValues: PlanFormValues = {
   color: "",
   description: "",
   priceTiers: [{ label: "Monthly", price: "", durationDays: "30" }],
+  highlightedTier: "",
+  includesPlanId: "",
   joiningFee: "",
   taxPercent: "",
   visitLimit: "",
@@ -93,55 +106,73 @@ function formatCurrency(value: number | string) {
 }
 
 /**
- * Pricing block: the shortest tier (e.g. Monthly) is the base rate everything
- * else is measured against. Every longer tier shows what it would have cost
- * at that base rate (crossed out) next to what it actually costs, plus the
- * resulting "Save N%" — so a gym's discount for committing longer is visible
- * at a glance instead of just three unrelated numbers.
+ * Pricing block: a tab per tier (shortest first). The shortest is the base
+ * rate everything else is measured against, so switching to a longer tier
+ * shows what it would have cost at that base rate (crossed out) next to what
+ * it actually costs, plus the resulting "Save N%". The plan's configured
+ * `highlightedTier` is both the default-selected tab and carries a small dot
+ * so it still reads as "the one to pick" even after switching away.
  */
 function PlanPricing({ plan }: { plan: MembershipPlan }) {
-  if (plan.priceTiers.length === 0) return null
+  const sortedTiers = [...plan.priceTiers].sort((a, b) => a.durationDays - b.durationDays)
+  const base = sortedTiers[0]
 
-  const [base, ...rest] = [...plan.priceTiers].sort((a, b) => a.durationDays - b.durationDays)
+  const defaultLabel =
+    plan.highlightedTier && sortedTiers.some((tier) => tier.label === plan.highlightedTier)
+      ? plan.highlightedTier
+      : (base?.label ?? "")
+  const [selectedLabel, setSelectedLabel] = useState(defaultLabel)
+
+  if (!base) return null
+  const selected = sortedTiers.find((tier) => tier.label === selectedLabel) ?? base
+  const isBase = selected.label === base.label
+  const equivalent = (base.price * selected.durationDays) / base.durationDays
+  const savingsPercent =
+    !isBase && equivalent > 0 ? Math.round(((equivalent - selected.price) / equivalent) * 100) : 0
+  const hasSavings = savingsPercent > 0
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-baseline gap-1.5">
-        <span className="text-3xl font-bold tracking-tight">₹{formatCurrency(base.price)}</span>
-        <span className="text-sm text-muted-foreground">/ {base.label}</span>
-      </div>
-
-      {rest.length > 0 && (
-        <div className="flex flex-col gap-1.5">
-          {rest.map((tier) => {
-            const equivalent = (base.price * tier.durationDays) / base.durationDays
-            const savingsPercent = equivalent > 0 ? Math.round(((equivalent - tier.price) / equivalent) * 100) : 0
-            const hasSavings = savingsPercent > 0
-
-            return (
-              <div
-                key={tier.label}
-                className="flex items-center justify-between gap-3 rounded-lg bg-muted/40 px-3 py-2"
-              >
-                <span className="text-sm font-medium">{tier.label}</span>
-                <div className="flex items-center gap-2">
-                  {hasSavings && (
-                    <span className="text-xs text-muted-foreground line-through">
-                      ₹{formatCurrency(equivalent)}
-                    </span>
-                  )}
-                  <span className="text-sm font-semibold">₹{formatCurrency(tier.price)}</span>
-                  {hasSavings && (
-                    <span className="rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-                      Save {savingsPercent}%
-                    </span>
-                  )}
-                </div>
-              </div>
-            )
-          })}
+      {sortedTiers.length > 1 && (
+        <div className="flex gap-1 rounded-lg bg-muted/50 p-1">
+          {sortedTiers.map((tier) => (
+            <button
+              key={tier.label}
+              type="button"
+              onClick={() => setSelectedLabel(tier.label)}
+              className={cn(
+                "relative flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors",
+                tier.label === selectedLabel
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {tier.label}
+              {tier.label === plan.highlightedTier && (
+                <span
+                  className="absolute -top-1 -right-1 size-1.5 rounded-full bg-emerald-500"
+                  aria-hidden
+                />
+              )}
+            </button>
+          ))}
         </div>
       )}
+
+      <div className="flex flex-wrap items-end gap-2">
+        {hasSavings && (
+          <span className="pb-1 text-sm text-muted-foreground line-through">
+            ₹{formatCurrency(equivalent)}
+          </span>
+        )}
+        <span className="text-3xl font-bold tracking-tight">₹{formatCurrency(selected.price)}</span>
+        <span className="pb-1 text-sm text-muted-foreground">/ {selected.label}</span>
+        {hasSavings && (
+          <span className="mb-1 rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+            Save {savingsPercent}%
+          </span>
+        )}
+      </div>
     </div>
   )
 }
@@ -160,23 +191,7 @@ function PlanCard({ plan, onEdit }: { plan: MembershipPlan; onEdit: () => void }
       style={plan.color ? { borderTopColor: plan.color, borderTopWidth: 3 } : undefined}
     >
       <div className="flex items-start justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-2">
-          {plan.color && (
-            <span
-              className="size-2.5 shrink-0 rounded-full"
-              style={{ backgroundColor: plan.color }}
-              aria-hidden
-            />
-          )}
-          <div className="min-w-0">
-            {plan.category && (
-              <p className="truncate text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                {plan.category}
-              </p>
-            )}
-            <h3 className="truncate text-lg font-semibold">{plan.name}</h3>
-          </div>
-        </div>
+        <h3 className="min-w-0 truncate text-lg font-semibold">{plan.name}</h3>
         <Badge variant={plan.isActive ? "success-light" : "destructive-light"} className="shrink-0">
           {plan.isActive ? "Active" : "Inactive"}
         </Badge>
@@ -207,15 +222,25 @@ function PlanCard({ plan, onEdit }: { plan: MembershipPlan; onEdit: () => void }
         </div>
       )}
 
-      {plan.features.length > 0 && (
-        <ul className="flex flex-col gap-1.5 border-t border-border/40 pt-3 text-sm">
-          {plan.features.map((feature, i) => (
-            <li key={i} className="flex items-start gap-2">
+      {(plan.includesPlan || plan.features.length > 0) && (
+        <div className="flex flex-col gap-1.5 border-t border-border/40 pt-3 text-sm">
+          {plan.includesPlan && (
+            <div className="flex items-start gap-2 font-medium">
               <CheckIcon className="mt-0.5 size-3.5 shrink-0 text-primary" />
-              <span className="leading-snug">{feature}</span>
-            </li>
-          ))}
-        </ul>
+              <span className="leading-snug">Everything in {plan.includesPlan.name}, plus:</span>
+            </div>
+          )}
+          {plan.features.length > 0 && (
+            <ul className="flex flex-col gap-1.5">
+              {plan.features.map((feature, i) => (
+                <li key={i} className="flex items-start gap-2">
+                  <CheckIcon className="mt-0.5 size-3.5 shrink-0 text-primary" />
+                  <span className="leading-snug">{feature}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       )}
 
       <div className="mt-auto flex items-center justify-between gap-2 border-t border-border/40 pt-3">
@@ -279,6 +304,11 @@ export default function MembershipsPage() {
     remove: removePriceTier,
   } = useFieldArray({ control, name: "priceTiers" })
 
+  const watchedPriceTiers = useWatch({ control, name: "priceTiers" })
+  const tierLabelOptions = watchedPriceTiers
+    .map((tier) => tier.label.trim())
+    .filter((label, index, all) => label.length > 0 && all.indexOf(label) === index)
+
   async function loadPlans() {
     const token = getToken()
     if (!token) return
@@ -319,6 +349,8 @@ export default function MembershipsPage() {
               durationDays: String(tier.durationDays),
             }))
           : [{ label: "Monthly", price: "", durationDays: "30" }],
+      highlightedTier: plan.highlightedTier ?? "",
+      includesPlanId: plan.includesPlanId ?? "",
       joiningFee: Number(plan.joiningFee) > 0 ? plan.joiningFee : "",
       taxPercent: Number(plan.taxPercent) > 0 ? plan.taxPercent : "",
       visitLimit: plan.visitLimit != null ? String(plan.visitLimit) : "",
@@ -343,6 +375,8 @@ export default function MembershipsPage() {
         price: Number(tier.price),
         durationDays: Number(tier.durationDays),
       })),
+      highlightedTier: values.highlightedTier,
+      includesPlanId: values.includesPlanId,
       joiningFee: values.joiningFee ? Number(values.joiningFee) : undefined,
       taxPercent: values.taxPercent ? Number(values.taxPercent) : undefined,
       visitLimit: values.visitLimit ? Number(values.visitLimit) : undefined,
@@ -564,6 +598,37 @@ export default function MembershipsPage() {
                 </div>
               </Field>
 
+              <Field>
+                <FieldLabel htmlFor="highlightedTier">Highlighted tier</FieldLabel>
+                <FieldDescription>
+                  Which price is featured as the default/&quot;most popular&quot; one on the card.
+                </FieldDescription>
+                <Controller
+                  control={control}
+                  name="highlightedTier"
+                  render={({ field }) => (
+                    <Select
+                      value={field.value || "none"}
+                      onValueChange={(value) => field.onChange(value === "none" ? "" : value)}
+                    >
+                      <SelectTrigger id="highlightedTier">
+                        <SelectValue placeholder="None" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          <SelectItem value="none">None</SelectItem>
+                          {tierLabelOptions.map((label) => (
+                            <SelectItem key={label} value={label}>
+                              {label}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </Field>
+
               <FieldSeparator />
 
               <div className="grid grid-cols-2 gap-4">
@@ -592,7 +657,47 @@ export default function MembershipsPage() {
               <FieldSeparator />
 
               <Field>
-                <FieldLabel>Features & includes</FieldLabel>
+                <FieldLabel htmlFor="includesPlanId">Includes plan</FieldLabel>
+                <FieldDescription>
+                  If this plan is a step up from another one, pick it here — the card will say
+                  &quot;Everything in {"{that plan}"}, plus:&quot; instead of repeating its features.
+                </FieldDescription>
+                <Controller
+                  control={control}
+                  name="includesPlanId"
+                  render={({ field }) => (
+                    <Select
+                      value={field.value || "none"}
+                      onValueChange={(value) => field.onChange(value === "none" ? "" : value)}
+                    >
+                      <SelectTrigger id="includesPlanId">
+                        <SelectValue placeholder="None">
+                          {(value: string) => plans.find((plan) => plan.id === value)?.name ?? "None"}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          <SelectItem value="none">None</SelectItem>
+                          {plans
+                            .filter((plan) => plan.id !== editingId)
+                            .map((plan) => (
+                              <SelectItem key={plan.id} value={plan.id}>
+                                {plan.name}
+                              </SelectItem>
+                            ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </Field>
+
+              <Field>
+                <FieldLabel>Features</FieldLabel>
+                <FieldDescription>
+                  This plan&apos;s own features, on top of whatever the included plan already
+                  covers.
+                </FieldDescription>
                 <div className="flex flex-col gap-2">
                   {featureFields.map((field, index) => (
                     <div key={field.id} className="flex items-center gap-2">
