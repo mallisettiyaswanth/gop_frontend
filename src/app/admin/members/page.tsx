@@ -15,6 +15,7 @@ import {
   CalendarIcon,
   FlameIcon,
   InfoIcon,
+  SearchIcon,
 } from "lucide-react"
 import {
   DataTable,
@@ -301,6 +302,13 @@ function MembersPageContent() {
     limit: 25,
     filters: initialFilters,
   }))
+  const [searchInput, setSearchInput] = useState("")
+  const [search, setSearch] = useState("")
+
+  useEffect(() => {
+    const timeout = setTimeout(() => setSearch(searchInput.trim()), 300)
+    return () => clearTimeout(timeout)
+  }, [searchInput])
 
   const {
     register,
@@ -336,6 +344,7 @@ function MembersPageContent() {
       accessorKey: "name",
       header: ({ column }) => <DataGridColumnHeader column={column} title="Name" />,
       cell: ({ row }) => <span className="block min-w-[170px] font-medium">{row.original.name}</span>,
+      size: 190,
       meta: { headerTitle: "Name", skeleton: <Skeleton className="h-4 w-32" /> },
     },
     {
@@ -433,17 +442,19 @@ function MembersPageContent() {
     },
   ], [plans, query.skip])
 
-  const fetchMembers = useCallback(async (q: DataTableServerQuery) => {
+  const fetchMembers = useCallback(async (q: DataTableServerQuery, searchTerm: string) => {
     const token = getToken()
     if (!token) return
     setLoading(true)
     setLoadError(null)
     try {
       const statusValue = q.filters.find((f) => f.id === "status")?.value as string[] | undefined
-      const searchValue = q.filters.find((f) => f.id === "name")?.value as string | undefined
       const planValue = q.filters.find((f) => f.id === "membership")?.value as
         | string[]
         | undefined
+      // The standalone search box and the "Name" filter chip both feed the
+      // same backend `search` param — whichever the admin is actually using.
+      const nameFilterValue = q.filters.find((f) => f.id === "name")?.value as string | undefined
 
       const result = await listMembers(token, {
         skip: q.skip,
@@ -452,7 +463,7 @@ function MembersPageContent() {
         sortDir: q.sortDir,
         status: statusValue && statusValue.length > 0 ? statusValue.join(",") : undefined,
         planId: planValue && planValue.length > 0 ? planValue.join(",") : undefined,
-        search: searchValue || undefined,
+        search: searchTerm || nameFilterValue || undefined,
       })
       setMembers(result.data)
       setTotal(result.total)
@@ -464,8 +475,8 @@ function MembersPageContent() {
   }, [])
 
   useEffect(() => {
-    fetchMembers(query)
-  }, [query, fetchMembers])
+    fetchMembers(query, search)
+  }, [query, search, fetchMembers])
 
   useEffect(() => {
     const token = getToken()
@@ -485,7 +496,7 @@ function MembersPageContent() {
       })
       reset()
       setDialogOpen(false)
-      fetchMembers(query)
+      fetchMembers(query, search)
     } catch (err) {
       setFormError(err instanceof ApiError ? err.message : "Something went wrong. Try again.")
     }
@@ -501,6 +512,15 @@ function MembersPageContent() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <div className="relative w-64">
+            <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Search name, phone, email, ID…"
+              className="pl-8"
+            />
+          </div>
           <div className="flex items-center rounded-md border p-0.5">
             <Button
               variant={view === "table" ? "secondary" : "ghost"}

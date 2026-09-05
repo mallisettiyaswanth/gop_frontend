@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import type { DateRange } from "react-day-picker"
-import { CalendarIcon, CheckIcon, FlameIcon, ListChecksIcon } from "lucide-react"
+import { CalendarIcon, CheckIcon, FlameIcon, ListChecksIcon, SearchIcon } from "lucide-react"
 import {
   DataTable,
   type DataTableColumn,
@@ -10,6 +10,7 @@ import {
 } from "@/components/data-table"
 import { DataGridColumnHeader } from "@/components/reui/data-grid/data-grid-column-header"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Calendar } from "@/components/ui/calendar"
@@ -181,6 +182,13 @@ export default function AttendancePage() {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [query, setQuery] = useState<DataTableServerQuery>({ skip: 0, limit: 12, filters: [] })
+  const [searchInput, setSearchInput] = useState("")
+  const [search, setSearch] = useState("")
+
+  useEffect(() => {
+    const timeout = setTimeout(() => setSearch(searchInput.trim()), 300)
+    return () => clearTimeout(timeout)
+  }, [searchInput])
 
   const fromKey = range.from ? toDateKey(range.from) : undefined
   const toKey = range.to ? toDateKey(range.to) : fromKey
@@ -189,33 +197,40 @@ export default function AttendancePage() {
     [fromKey, toKey]
   )
 
-  const fetchGrid = useCallback(async (q: DataTableServerQuery, from: string, to: string) => {
-    const token = getToken()
-    if (!token) return
-    setLoading(true)
-    setLoadError(null)
-    try {
-      const searchValue = q.filters.find((f) => f.id === "name")?.value as string | undefined
-      const result = await getAttendanceGrid(token, {
-        from,
-        to,
-        skip: q.skip,
-        limit: q.limit,
-        search: searchValue || undefined,
-      })
-      setMembers(result.data)
-      setTotal(result.total)
-    } catch (err) {
-      setLoadError(err instanceof ApiError ? err.message : "Couldn't load attendance.")
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+  const fetchGrid = useCallback(
+    async (q: DataTableServerQuery, from: string, to: string, searchTerm: string) => {
+      const token = getToken()
+      if (!token) return
+      setLoading(true)
+      setLoadError(null)
+      try {
+        // The standalone search box and the "Name" filter chip both feed the
+        // same backend `search` param — whichever the admin is actually using.
+        const nameFilterValue = q.filters.find((f) => f.id === "name")?.value as
+          | string
+          | undefined
+        const result = await getAttendanceGrid(token, {
+          from,
+          to,
+          skip: q.skip,
+          limit: q.limit,
+          search: searchTerm || nameFilterValue || undefined,
+        })
+        setMembers(result.data)
+        setTotal(result.total)
+      } catch (err) {
+        setLoadError(err instanceof ApiError ? err.message : "Couldn't load attendance.")
+      } finally {
+        setLoading(false)
+      }
+    },
+    []
+  )
 
   useEffect(() => {
     if (!fromKey || !toKey) return
-    fetchGrid(query, fromKey, toKey)
-  }, [query, fromKey, toKey, fetchGrid])
+    fetchGrid(query, fromKey, toKey, search)
+  }, [query, fromKey, toKey, search, fetchGrid])
 
   const columns: DataTableColumn<AttendanceGridMember>[] = useMemo(
     () => [
@@ -225,6 +240,7 @@ export default function AttendancePage() {
         cell: ({ row }) => (
           <span className="block min-w-[150px] font-medium">{row.original.name}</span>
         ),
+        size: 190,
         meta: { headerTitle: "Name", skeleton: <Skeleton className="h-4 w-32" /> },
       },
       {
@@ -250,6 +266,7 @@ export default function AttendancePage() {
         ),
         enableSorting: false,
         enableColumnFilter: false,
+        size: 90,
         meta: { headerTitle: "Present", skeleton: <Skeleton className="h-4 w-10" /> },
       },
       {
@@ -278,6 +295,7 @@ export default function AttendancePage() {
         ),
         enableSorting: false,
         enableColumnFilter: false,
+        size: 80,
         meta: { headerTitle: "Streak", skeleton: <Skeleton className="h-4 w-10" /> },
       },
       {
@@ -320,7 +338,18 @@ export default function AttendancePage() {
             Day-wise check-ins for the selected date range.
           </p>
         </div>
-        <DateRangePicker range={range} onChange={setRange} />
+        <div className="flex items-center gap-2">
+          <div className="relative w-64">
+            <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Search name, phone, email, ID…"
+              className="pl-8"
+            />
+          </div>
+          <DateRangePicker range={range} onChange={setRange} />
+        </div>
       </div>
 
       {loadError && (
@@ -337,8 +366,8 @@ export default function AttendancePage() {
         emptyMessage="No members found."
         pageSize={12}
         pageSizeOptions={[12, 25, 50]}
-        isFiltersEnable
         isViewEnable
+        isFiltersEnable
         enableColumnPinning
         initialColumnPinning={{ start: ["name"], end: ["count", "streak"] }}
         initialColumnVisibility={{ memberCode: false, phone: false }}
