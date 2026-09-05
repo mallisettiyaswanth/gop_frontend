@@ -117,9 +117,19 @@ function DateRangePicker({
   onChange: (range: DateRange) => void
 }) {
   const [open, setOpen] = useState(false)
+  // Tracks the in-progress selection while only one end of the range has
+  // been picked, so the calendar can preview it without firing onChange
+  // (and thus a fetch) until a complete range is chosen.
+  const [pending, setPending] = useState<DateRange | undefined>(range)
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next)
+        if (next) setPending(range)
+      }}
+    >
       <PopoverTrigger
         render={
           <Button variant="outline" size="sm">
@@ -133,11 +143,30 @@ function DateRangePicker({
           mode="range"
           numberOfMonths={2}
           defaultMonth={range.from}
-          selected={range}
-          onSelect={(next) => {
-            if (!next) return
-            onChange(next)
-            if (next.from && next.to) setOpen(false)
+          selected={pending}
+          onSelect={(_next, clickedDay) => {
+            // react-day-picker "completes" a range on a single click whenever
+            // the previously selected range already had both ends (it just
+            // moves whichever end is closer) — which is exactly the "one
+            // click fires a fetch" bug. So the two-click walk is driven
+            // manually off clickedDay instead of trusting its computed range:
+            // a click while pending is incomplete closes the range; any other
+            // click (nothing pending yet, or the old range was already
+            // complete) starts a fresh single-ended selection.
+            // (onChange/setOpen are called here, outside the setPending
+            // updater — calling them from inside the updater fires a parent
+            // state update while this component is still rendering.)
+            if (pending?.from && !pending.to) {
+              const complete =
+                clickedDay < pending.from
+                  ? { from: clickedDay, to: pending.from }
+                  : { from: pending.from, to: clickedDay }
+              setPending(complete)
+              onChange(complete)
+              setOpen(false)
+            } else {
+              setPending({ from: clickedDay, to: undefined })
+            }
           }}
           disabled={{ after: new Date() }}
         />
