@@ -270,6 +270,18 @@ export default function MembersPage() {
 
   const columns: DataTableColumn<Member>[] = useMemo(() => [
     {
+      id: "rowNumber",
+      header: "#",
+      cell: ({ row }) => (
+        <span className="text-muted-foreground">{query.skip + row.index + 1}</span>
+      ),
+      enableSorting: false,
+      enableColumnFilter: false,
+      enableHiding: false,
+      enablePinning: false,
+      size: 40,
+    },
+    {
       accessorKey: "memberCode",
       header: ({ column }) => <DataGridColumnHeader column={column} title="Member" />,
       enableColumnFilter: false,
@@ -360,7 +372,7 @@ export default function MembersPage() {
       enableColumnFilter: false,
       meta: { headerTitle: "Joined", skeleton: <Skeleton className="h-4 w-20" /> },
     },
-  ], [plans])
+  ], [plans, query.skip])
 
   const fetchMembers = useCallback(async (q: DataTableServerQuery) => {
     const token = getToken()
@@ -421,8 +433,8 @@ export default function MembersPage() {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-6">
-      <div className="flex shrink-0 items-center justify-between">
+    <div className="flex flex-col gap-6">
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Members</h1>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -461,7 +473,7 @@ export default function MembersPage() {
       </div>
 
       {loadError && (
-        <Alert variant="destructive" className="shrink-0">
+        <Alert variant="destructive">
           <AlertDescription>{loadError}</AlertDescription>
         </Alert>
       )}
@@ -477,17 +489,16 @@ export default function MembersPage() {
           isSortListEnable
           isViewEnable
           enableColumnPinning
-          initialColumnPinning={{ start: ["name"] }}
+          initialColumnPinning={{ start: ["rowNumber"] }}
           initialColumnVisibility={{ memberCode: false }}
-          fillHeight
-          className="flex-1 min-h-0"
+          maxVisibleRows={13}
           getRowStyle={getMemberRowStyle}
           serverSide
           rowCount={total}
           onQueryChange={setQuery}
         />
       ) : (
-        <div className="flex-1 min-h-0 overflow-y-auto">
+        <div>
           {loading ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {Array.from({ length: 6 }, (_, i) => (

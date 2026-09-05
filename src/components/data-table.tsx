@@ -727,6 +727,15 @@ export interface DataTableProps<TData extends object> {
    */
   fillHeight?: boolean
   /**
+   * Caps the row area at roughly this many rows tall — sized to content up
+   * to that height (so e.g. 6 rows on a 10-row page takes exactly 6 rows'
+   * worth of space, no leftover blank area), then scrolls internally once
+   * there are more. Header pins to the top past that point. Independent of
+   * `fillHeight`: this is a fixed cap based on row count, not "fill
+   * whatever height the parent happens to have."
+   */
+  maxVisibleRows?: number
+  /**
    * Escape hatch for any other ReUI tableLayout flag (columnsResizable,
    * columnsMovable, rowsDraggable, cellSelection, ...) not covered by a
    * dedicated prop above. Merged over this component's own defaults.
@@ -763,6 +772,7 @@ export function DataTable<TData extends object>({
   initialColumnPinning,
   initialColumnVisibility,
   fillHeight = false,
+  maxVisibleRows,
   tableLayout: tableLayoutOverrides,
   serverSide = false,
   rowCount,
@@ -834,7 +844,7 @@ export function DataTable<TData extends object>({
         rowBorder: true,
         cellBorder: true,
         headerBorder: true,
-        headerSticky: fillHeight,
+        headerSticky: fillHeight || !!maxVisibleRows,
         width: "auto",
         columnsPinnable: enableColumnPinning,
         ...tableLayoutOverrides,
@@ -871,6 +881,15 @@ export function DataTable<TData extends object>({
             "no-scrollbar overflow-auto rounded-lg border",
             fillHeight && "flex-1 min-h-0"
           )}
+          style={
+            maxVisibleRows
+              ? // Measured from the default row: ~40px header + ~38px/row,
+                // plus 2px for this wrapper's own top+bottom border. Sizes to
+                // content up to this height (no leftover blank space below a
+                // shorter page), then scrolls past it.
+                { maxHeight: `${40 + maxVisibleRows * 38 + 2}px` }
+              : undefined
+          }
         >
           {/*
             DataGridContainer defaults to overflow-hidden, which — since it's
