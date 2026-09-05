@@ -119,14 +119,18 @@ export async function createMember(token: string, input: CreateMemberInput): Pro
   return parseJsonOrThrow(res)
 }
 
+export type PriceTier = {
+  label: string
+  price: number
+}
+
 export type MembershipPlan = {
   id: string
   name: string
+  category: string | null
   level: string | null
   description: string | null
-  dailyPrice: string | null
-  monthlyPrice: string | null
-  yearlyPrice: string | null
+  priceTiers: PriceTier[]
   joiningFee: string
   taxPercent: string
   visitLimit: number | null
@@ -139,11 +143,10 @@ export type MembershipPlan = {
 
 export type MembershipPlanInput = {
   name: string
+  category?: string
   level?: string
   description?: string
-  dailyPrice?: number
-  monthlyPrice?: number
-  yearlyPrice?: number
+  priceTiers: PriceTier[]
   joiningFee?: number
   taxPercent?: number
   visitLimit?: number

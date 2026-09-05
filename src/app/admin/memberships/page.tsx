@@ -4,7 +4,16 @@ import { useEffect, useState } from "react"
 import { Controller, useFieldArray, useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { PlusIcon, XIcon, CheckIcon, PencilIcon } from "lucide-react"
+import {
+  PlusIcon,
+  XIcon,
+  CheckIcon,
+  PencilIcon,
+  Table2Icon,
+  LayoutGridIcon,
+} from "lucide-react"
+import { DataTable, type DataTableColumn, multiSelectFilterFn } from "@/components/data-table"
+import { DataGridColumnHeader } from "@/components/reui/data-grid/data-grid-column-header"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -44,39 +53,34 @@ const optionalAmount = z.union([
 ])
 const optionalWholeNumber = z.union([z.literal(""), z.string().regex(/^\d+$/, "Enter a whole number")])
 
-const planSchema = z
-  .object({
-    name: z.string().min(1, "Name is required"),
-    level: z.string(),
-    description: z.string(),
-    dailyPrice: optionalAmount,
-    monthlyPrice: optionalAmount,
-    yearlyPrice: optionalAmount,
-    joiningFee: optionalAmount,
-    taxPercent: optionalAmount,
-    visitLimit: optionalWholeNumber,
-    features: z.array(z.object({ value: z.string().min(1, "Feature can't be empty") })),
-    isActive: z.boolean(),
-  })
-  .superRefine((data, ctx) => {
-    if (!data.dailyPrice && !data.monthlyPrice && !data.yearlyPrice) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Set at least one price (daily, monthly, or yearly)",
-        path: ["monthlyPrice"],
+const planSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  category: z.string(),
+  level: z.string(),
+  description: z.string(),
+  priceTiers: z
+    .array(
+      z.object({
+        label: z.string().min(1, "Name this price"),
+        price: z.string().regex(/^\d+(\.\d{1,2})?$/, "Enter a valid amount"),
       })
-    }
-  })
+    )
+    .min(1, "Add at least one price"),
+  joiningFee: optionalAmount,
+  taxPercent: optionalAmount,
+  visitLimit: optionalWholeNumber,
+  features: z.array(z.object({ value: z.string().min(1, "Feature can't be empty") })),
+  isActive: z.boolean(),
+})
 
 type PlanFormValues = z.infer<typeof planSchema>
 
 const emptyValues: PlanFormValues = {
   name: "",
+  category: "",
   level: "",
   description: "",
-  dailyPrice: "",
-  monthlyPrice: "",
-  yearlyPrice: "",
+  priceTiers: [{ label: "Monthly", price: "" }],
   joiningFee: "",
   taxPercent: "",
   visitLimit: "",
@@ -84,66 +88,155 @@ const emptyValues: PlanFormValues = {
   isActive: true,
 }
 
-function formatCurrency(value: string) {
-  const n = Number(value)
-  return n.toLocaleString(undefined, { maximumFractionDigits: 2 })
+function formatCurrency(value: number | string) {
+  return Number(value).toLocaleString(undefined, { maximumFractionDigits: 2 })
+}
+
+const columns: DataTableColumn<MembershipPlan>[] = [
+  {
+    accessorKey: "name",
+    header: ({ column }) => <DataGridColumnHeader column={column} title="Plan" />,
+    cell: ({ row }) => (
+      <div className="flex items-center gap-2">
+        <span className="font-medium">{row.original.name}</span>
+        {row.original.level && (
+          <Badge variant="secondary" className="shrink-0">
+            {row.original.level}
+          </Badge>
+        )}
+      </div>
+    ),
+    meta: { headerTitle: "Plan", skeleton: <Skeleton className="h-4 w-32" /> },
+  },
+  {
+    accessorKey: "category",
+    header: ({ column }) => <DataGridColumnHeader column={column} title="Category" />,
+    cell: ({ row }) => row.original.category ?? "—",
+    meta: { headerTitle: "Category", skeleton: <Skeleton className="h-4 w-24" /> },
+  },
+  {
+    id: "pricing",
+    accessorFn: (row) =>
+      row.priceTiers.map((tier) => `${tier.label} ₹${formatCurrency(tier.price)}`).join(" · "),
+    header: ({ column }) => <DataGridColumnHeader column={column} title="Pricing" />,
+    meta: { headerTitle: "Pricing", skeleton: <Skeleton className="h-4 w-48" /> },
+  },
+  {
+    accessorKey: "joiningFee",
+    header: ({ column }) => <DataGridColumnHeader column={column} title="Joining fee" />,
+    cell: ({ row }) =>
+      Number(row.original.joiningFee) > 0 ? `₹${formatCurrency(row.original.joiningFee)}` : "—",
+    meta: { headerTitle: "Joining fee", skeleton: <Skeleton className="h-4 w-16" /> },
+  },
+  {
+    accessorKey: "visitLimit",
+    header: ({ column }) => <DataGridColumnHeader column={column} title="Visit limit" />,
+    cell: ({ row }) => row.original.visitLimit ?? "Unlimited",
+    meta: { headerTitle: "Visit limit", skeleton: <Skeleton className="h-4 w-16" /> },
+  },
+  {
+    accessorKey: "isActive",
+    header: ({ column }) => <DataGridColumnHeader column={column} title="Status" />,
+    cell: ({ row }) => (
+      <Badge variant={row.original.isActive ? "success-light" : "destructive-light"}>
+        {row.original.isActive ? "Active" : "Inactive"}
+      </Badge>
+    ),
+    filterFn: multiSelectFilterFn,
+    meta: {
+      headerTitle: "Status",
+      variant: "select",
+      options: [
+        { label: "Active", value: "true" },
+        { label: "Inactive", value: "false" },
+      ],
+      skeleton: <Skeleton className="h-5 w-16 rounded-full" />,
+    },
+  },
+]
+
+function PriceHeadline({ plan }: { plan: MembershipPlan }) {
+  if (plan.priceTiers.length === 0) return null
+
+  // A single price gets the big headline treatment; several tiers on the
+  // same plan (e.g. Monthly + 3 Months + Yearly) are shown side by side at
+  // equal weight instead of picking one as "primary" and shrinking the rest.
+  if (plan.priceTiers.length === 1) {
+    const [only] = plan.priceTiers
+    return (
+      <div className="flex items-baseline gap-1.5">
+        <span className="text-3xl font-bold tracking-tight">₹{formatCurrency(only.price)}</span>
+        <span className="text-sm text-muted-foreground">{only.label}</span>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-wrap items-end gap-5">
+      {plan.priceTiers.map((tier, i) => (
+        <div key={i} className="flex flex-col">
+          <span className="text-xs text-muted-foreground">{tier.label}</span>
+          <span className="text-2xl font-bold tracking-tight">₹{formatCurrency(tier.price)}</span>
+        </div>
+      ))}
+    </div>
+  )
 }
 
 function PlanCard({ plan, onEdit }: { plan: MembershipPlan; onEdit: () => void }) {
-  const hasExtras = Number(plan.joiningFee) > 0 || Number(plan.taxPercent) > 0 || plan.visitLimit != null
+  const extras = [
+    Number(plan.joiningFee) > 0 && `Joining fee ₹${formatCurrency(plan.joiningFee)}`,
+    Number(plan.taxPercent) > 0 && `Tax ${plan.taxPercent}%`,
+    plan.visitLimit != null && `${plan.visitLimit} visits/mo`,
+  ].filter((extra): extra is string => !!extra)
 
   return (
-    <div className="flex flex-col gap-4 rounded-lg border bg-card p-5">
+    <div className="flex flex-col gap-4 rounded-xl border p-5 shadow-sm transition-shadow hover:shadow-md">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-lg font-semibold">{plan.name}</h3>
-            {plan.level && <Badge variant="secondary">{plan.level}</Badge>}
-          </div>
-          {plan.description && (
-            <p className="mt-1 text-sm text-muted-foreground">{plan.description}</p>
+          {plan.category && (
+            <p className="truncate text-xs font-medium tracking-wide text-muted-foreground uppercase">
+              {plan.category}
+            </p>
           )}
+          <h3 className="truncate text-lg font-semibold">{plan.name}</h3>
         </div>
         <Badge variant={plan.isActive ? "success-light" : "destructive-light"} className="shrink-0">
           {plan.isActive ? "Active" : "Inactive"}
         </Badge>
       </div>
 
-      <div className="flex flex-col gap-1 border-t pt-3">
-        {plan.monthlyPrice && (
-          <div className="flex items-baseline justify-between">
-            <span className="text-sm text-muted-foreground">Monthly</span>
-            <span className="text-xl font-semibold">₹{formatCurrency(plan.monthlyPrice)}</span>
-          </div>
-        )}
-        {plan.yearlyPrice && (
-          <div className="flex items-baseline justify-between">
-            <span className="text-sm text-muted-foreground">Yearly</span>
-            <span className="text-xl font-semibold">₹{formatCurrency(plan.yearlyPrice)}</span>
-          </div>
-        )}
-        {plan.dailyPrice && (
-          <div className="flex items-baseline justify-between">
-            <span className="text-sm text-muted-foreground">Daily</span>
-            <span className="text-xl font-semibold">₹{formatCurrency(plan.dailyPrice)}</span>
-          </div>
-        )}
+      {plan.level && (
+        <Badge variant="secondary" className="-mt-2 w-fit">
+          {plan.level}
+        </Badge>
+      )}
+
+      {plan.description && <p className="text-sm text-muted-foreground">{plan.description}</p>}
+
+      <div className="border-t border-border/40 pt-3">
+        <PriceHeadline plan={plan} />
       </div>
 
-      {hasExtras && (
-        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-          {Number(plan.joiningFee) > 0 && <span>Joining fee ₹{formatCurrency(plan.joiningFee)}</span>}
-          {Number(plan.taxPercent) > 0 && <span>Tax {plan.taxPercent}%</span>}
-          {plan.visitLimit != null && <span>{plan.visitLimit} visits/month</span>}
+      {extras.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {extras.map((extra) => (
+            <span
+              key={extra}
+              className="rounded-full border border-border/60 px-2 py-0.5 text-xs text-muted-foreground"
+            >
+              {extra}
+            </span>
+          ))}
         </div>
       )}
 
       {plan.features.length > 0 && (
-        <ul className="flex flex-col gap-1.5 border-t pt-3 text-sm">
+        <ul className="flex flex-col gap-1.5 border-t border-border/40 pt-3 text-sm">
           {plan.features.map((feature, i) => (
             <li key={i} className="flex items-start gap-2">
               <CheckIcon className="mt-0.5 size-3.5 shrink-0 text-primary" />
-              <span>{feature}</span>
+              <span className="leading-snug">{feature}</span>
             </li>
           ))}
         </ul>
@@ -159,14 +252,14 @@ function PlanCard({ plan, onEdit }: { plan: MembershipPlan; onEdit: () => void }
 
 function PlanCardSkeleton() {
   return (
-    <div className="flex flex-col gap-4 rounded-lg border bg-card p-5">
+    <div className="flex flex-col gap-4 rounded-xl border p-5">
       <div className="flex items-start justify-between gap-2">
         <Skeleton className="h-6 w-32" />
         <Skeleton className="h-5 w-16" />
       </div>
-      <div className="flex flex-col gap-2 border-t pt-3">
-        <Skeleton className="h-6 w-full" />
-        <Skeleton className="h-6 w-full" />
+      <div className="flex flex-col gap-2 border-t border-border/40 pt-3">
+        <Skeleton className="h-8 w-24" />
+        <Skeleton className="h-4 w-32" />
       </div>
     </div>
   )
@@ -177,6 +270,7 @@ export default function MembershipsPage() {
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [view, setView] = useState<"table" | "cards">("cards")
 
   const {
     register,
@@ -189,7 +283,16 @@ export default function MembershipsPage() {
     defaultValues: emptyValues,
   })
 
-  const { fields, append, remove } = useFieldArray({ control, name: "features" })
+  const {
+    fields: featureFields,
+    append: appendFeature,
+    remove: removeFeature,
+  } = useFieldArray({ control, name: "features" })
+  const {
+    fields: priceTierFields,
+    append: appendPriceTier,
+    remove: removePriceTier,
+  } = useFieldArray({ control, name: "priceTiers" })
 
   async function loadPlans() {
     const token = getToken()
@@ -219,11 +322,13 @@ export default function MembershipsPage() {
     setEditingId(plan.id)
     reset({
       name: plan.name,
+      category: plan.category ?? "",
       level: plan.level ?? "",
       description: plan.description ?? "",
-      dailyPrice: plan.dailyPrice ?? "",
-      monthlyPrice: plan.monthlyPrice ?? "",
-      yearlyPrice: plan.yearlyPrice ?? "",
+      priceTiers:
+        plan.priceTiers.length > 0
+          ? plan.priceTiers.map((tier) => ({ label: tier.label, price: String(tier.price) }))
+          : [{ label: "Monthly", price: "" }],
       joiningFee: Number(plan.joiningFee) > 0 ? plan.joiningFee : "",
       taxPercent: Number(plan.taxPercent) > 0 ? plan.taxPercent : "",
       visitLimit: plan.visitLimit != null ? String(plan.visitLimit) : "",
@@ -239,11 +344,10 @@ export default function MembershipsPage() {
 
     const input = {
       name: values.name,
+      category: values.category || undefined,
       level: values.level || undefined,
       description: values.description || undefined,
-      dailyPrice: values.dailyPrice ? Number(values.dailyPrice) : undefined,
-      monthlyPrice: values.monthlyPrice ? Number(values.monthlyPrice) : undefined,
-      yearlyPrice: values.yearlyPrice ? Number(values.yearlyPrice) : undefined,
+      priceTiers: values.priceTiers.map((tier) => ({ label: tier.label, price: Number(tier.price) })),
       joiningFee: values.joiningFee ? Number(values.joiningFee) : undefined,
       taxPercent: values.taxPercent ? Number(values.taxPercent) : undefined,
       visitLimit: values.visitLimit ? Number(values.visitLimit) : undefined,
@@ -280,13 +384,46 @@ export default function MembershipsPage() {
             Manage the plans members can sign up for.
           </p>
         </div>
-        <Button onClick={openAddDialog}>
-          <PlusIcon />
-          Add plan
-        </Button>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center rounded-md border p-0.5">
+            <Button
+              variant={view === "table" ? "secondary" : "ghost"}
+              size="icon-sm"
+              aria-label="Table view"
+              onClick={() => setView("table")}
+            >
+              <Table2Icon />
+            </Button>
+            <Button
+              variant={view === "cards" ? "secondary" : "ghost"}
+              size="icon-sm"
+              aria-label="Card view"
+              onClick={() => setView("cards")}
+            >
+              <LayoutGridIcon />
+            </Button>
+          </div>
+          <Button onClick={openAddDialog}>
+            <PlusIcon />
+            Add plan
+          </Button>
+        </div>
       </div>
 
-      {loading ? (
+      {view === "table" ? (
+        <DataTable
+          columns={columns}
+          data={plans}
+          getRowId={(row) => row.id}
+          isLoading={loading}
+          emptyMessage="No membership plans yet."
+          isFiltersEnable
+          isSortListEnable
+          isViewEnable
+          enableColumnPinning
+          onRowClick={openEditDialog}
+        />
+      ) : loading ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 3 }, (_, i) => (
             <PlanCardSkeleton key={i} />
@@ -310,8 +447,7 @@ export default function MembershipsPage() {
             <SheetHeader>
               <SheetTitle>{editingId ? "Edit plan" : "Add plan"}</SheetTitle>
               <SheetDescription>
-                Set pricing and what&apos;s included. At least one of daily, monthly, or yearly
-                price is required.
+                Name your own prices — e.g. Monthly, 3 Months, Yearly, or anything a PT plan needs.
               </SheetDescription>
             </SheetHeader>
             <FieldGroup className="flex-1 overflow-y-auto px-4 pb-4">
@@ -328,21 +464,30 @@ export default function MembershipsPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <Field>
+                  <FieldLabel htmlFor="category">Category</FieldLabel>
+                  <Input
+                    id="category"
+                    placeholder="e.g. Personal Training, General"
+                    {...register("category")}
+                  />
+                </Field>
+                <Field>
                   <FieldLabel htmlFor="level">Level</FieldLabel>
                   <Input id="level" placeholder="e.g. Basic, Premium" {...register("level")} />
                 </Field>
-                <Field data-invalid={!!errors.visitLimit}>
-                  <FieldLabel htmlFor="visitLimit">Visit limit</FieldLabel>
-                  <Input
-                    id="visitLimit"
-                    inputMode="numeric"
-                    placeholder="Unlimited"
-                    aria-invalid={!!errors.visitLimit}
-                    {...register("visitLimit")}
-                  />
-                  <FieldError errors={[errors.visitLimit]} />
-                </Field>
               </div>
+
+              <Field data-invalid={!!errors.visitLimit}>
+                <FieldLabel htmlFor="visitLimit">Visit limit</FieldLabel>
+                <Input
+                  id="visitLimit"
+                  inputMode="numeric"
+                  placeholder="Unlimited"
+                  aria-invalid={!!errors.visitLimit}
+                  {...register("visitLimit")}
+                />
+                <FieldError errors={[errors.visitLimit]} />
+              </Field>
 
               <Field>
                 <FieldLabel htmlFor="description">Description</FieldLabel>
@@ -355,41 +500,59 @@ export default function MembershipsPage() {
               </Field>
 
               <FieldSeparator />
-              <FieldDescription>Pricing — set any combination.</FieldDescription>
 
-              <div className="grid grid-cols-3 gap-4">
-                <Field data-invalid={!!errors.dailyPrice}>
-                  <FieldLabel htmlFor="dailyPrice">Daily</FieldLabel>
-                  <Input
-                    id="dailyPrice"
-                    inputMode="decimal"
-                    placeholder="0.00"
-                    aria-invalid={!!errors.dailyPrice}
-                    {...register("dailyPrice")}
-                  />
-                </Field>
-                <Field data-invalid={!!errors.monthlyPrice}>
-                  <FieldLabel htmlFor="monthlyPrice">Monthly</FieldLabel>
-                  <Input
-                    id="monthlyPrice"
-                    inputMode="decimal"
-                    placeholder="0.00"
-                    aria-invalid={!!errors.monthlyPrice}
-                    {...register("monthlyPrice")}
-                  />
-                </Field>
-                <Field data-invalid={!!errors.yearlyPrice}>
-                  <FieldLabel htmlFor="yearlyPrice">Yearly</FieldLabel>
-                  <Input
-                    id="yearlyPrice"
-                    inputMode="decimal"
-                    placeholder="0.00"
-                    aria-invalid={!!errors.yearlyPrice}
-                    {...register("yearlyPrice")}
-                  />
-                </Field>
-              </div>
-              <FieldError errors={[errors.monthlyPrice]} />
+              <Field>
+                <FieldLabel>Pricing</FieldLabel>
+                <FieldDescription>
+                  Add as many price tiers as this plan needs — name each one however your gym
+                  prices it.
+                </FieldDescription>
+                <div className="flex flex-col gap-2">
+                  {priceTierFields.map((field, index) => (
+                    <div key={field.id} className="flex items-start gap-2">
+                      <div className="flex-1">
+                        <Input
+                          placeholder="e.g. Monthly, 3 Months, PT Yearly"
+                          aria-invalid={!!errors.priceTiers?.[index]?.label}
+                          {...register(`priceTiers.${index}.label` as const)}
+                        />
+                        <FieldError errors={[errors.priceTiers?.[index]?.label]} />
+                      </div>
+                      <div className="w-32">
+                        <Input
+                          inputMode="decimal"
+                          placeholder="0.00"
+                          aria-invalid={!!errors.priceTiers?.[index]?.price}
+                          {...register(`priceTiers.${index}.price` as const)}
+                        />
+                        <FieldError errors={[errors.priceTiers?.[index]?.price]} />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => removePriceTier(index)}
+                        aria-label="Remove price"
+                      >
+                        <XIcon />
+                      </Button>
+                    </div>
+                  ))}
+                  <FieldError errors={[errors.priceTiers]} />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="self-start"
+                    onClick={() => appendPriceTier({ label: "", price: "" })}
+                  >
+                    <PlusIcon />
+                    Add price
+                  </Button>
+                </div>
+              </Field>
+
+              <FieldSeparator />
 
               <div className="grid grid-cols-2 gap-4">
                 <Field data-invalid={!!errors.joiningFee}>
@@ -419,7 +582,7 @@ export default function MembershipsPage() {
               <Field>
                 <FieldLabel>Features & includes</FieldLabel>
                 <div className="flex flex-col gap-2">
-                  {fields.map((field, index) => (
+                  {featureFields.map((field, index) => (
                     <div key={field.id} className="flex items-center gap-2">
                       <Input
                         placeholder="e.g. Access to all equipment"
@@ -430,7 +593,7 @@ export default function MembershipsPage() {
                         type="button"
                         variant="ghost"
                         size="icon-sm"
-                        onClick={() => remove(index)}
+                        onClick={() => removeFeature(index)}
                         aria-label="Remove feature"
                       >
                         <XIcon />
@@ -442,7 +605,7 @@ export default function MembershipsPage() {
                     variant="outline"
                     size="sm"
                     className="self-start"
-                    onClick={() => append({ value: "" })}
+                    onClick={() => appendFeature({ value: "" })}
                   >
                     <PlusIcon />
                     Add feature
