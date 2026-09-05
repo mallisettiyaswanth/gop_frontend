@@ -271,15 +271,16 @@ export default function MembersPage() {
   const columns: DataTableColumn<Member>[] = useMemo(() => [
     {
       id: "rowNumber",
-      header: "#",
+      header: ({ column }) => <DataGridColumnHeader column={column} title="#" />,
       cell: ({ row }) => (
         <span className="text-muted-foreground">{query.skip + row.index + 1}</span>
       ),
+      // A page-relative index isn't a real sortable/filterable field on the
+      // backend (same reasoning as the Duration/Expires/Streak columns).
       enableSorting: false,
       enableColumnFilter: false,
-      enableHiding: false,
-      enablePinning: false,
       size: 40,
+      meta: { headerTitle: "#", skeleton: <Skeleton className="h-4 w-6" /> },
     },
     {
       accessorKey: "memberCode",
@@ -489,7 +490,7 @@ export default function MembersPage() {
           isSortListEnable
           isViewEnable
           enableColumnPinning
-          initialColumnPinning={{ start: ["rowNumber"] }}
+          initialColumnPinning={{ start: ["rowNumber", "name"] }}
           initialColumnVisibility={{ memberCode: false }}
           maxVisibleRows={13}
           getRowStyle={getMemberRowStyle}
