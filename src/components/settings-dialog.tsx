@@ -1,10 +1,12 @@
 "use client"
 
 import * as React from "react"
-import { SearchIcon, SettingsIcon, KeyRoundIcon } from "lucide-react"
+import { SearchIcon, SettingsIcon, KeyRoundIcon, XIcon } from "lucide-react"
 
+import { Button } from "@/components/ui/button"
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogTitle,
@@ -54,7 +56,10 @@ export function SettingsDialog({
         if (!next) setQuery("")
       }}
     >
-      <DialogContent className="overflow-hidden p-0 sm:max-w-3xl md:max-h-[760px] md:max-w-[980px] lg:max-w-[1080px]">
+      <DialogContent
+        showCloseButton={false}
+        className="overflow-hidden p-0 sm:max-w-3xl md:max-h-[760px] md:max-w-[980px] lg:max-w-[1080px]"
+      >
         <DialogTitle className="sr-only">Settings</DialogTitle>
         <DialogDescription className="sr-only">
           Manage gym profile and account security settings.
@@ -101,8 +106,16 @@ export function SettingsDialog({
               </SidebarGroup>
             </SidebarContent>
           </Sidebar>
-          <main className="flex h-full flex-1 flex-col overflow-y-auto p-8 pt-14">
-            {tab === "general" ? <GeneralSettingsForm /> : <SecuritySettingsForm />}
+          <main className="flex h-full flex-1 flex-col overflow-y-auto">
+            <div className="sticky top-0 z-10 flex h-12 shrink-0 items-center justify-end bg-popover px-4">
+              <DialogClose render={<Button variant="ghost" size="icon-sm" />}>
+                <XIcon />
+                <span className="sr-only">Close</span>
+              </DialogClose>
+            </div>
+            <div className="px-8 pb-8">
+              {tab === "general" ? <GeneralSettingsForm /> : <SecuritySettingsForm />}
+            </div>
           </main>
         </SidebarProvider>
       </DialogContent>
