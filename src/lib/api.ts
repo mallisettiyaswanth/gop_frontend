@@ -31,6 +31,19 @@ async function parseJsonOrThrow(res: Response) {
   return data
 }
 
+export type LoginMethod = {
+  pinEnabled: boolean
+}
+
+export async function getLoginMethod(email: string): Promise<LoginMethod> {
+  const res = await fetch(`${API_URL}/auth/login-method`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  })
+  return parseJsonOrThrow(res)
+}
+
 export async function loginWithPassword(email: string, password: string): Promise<LoginResult> {
   const res = await fetch(`${API_URL}/auth/login`, {
     method: "POST",
@@ -139,16 +152,30 @@ export async function updateGymSettings(
   return parseJsonOrThrow(res)
 }
 
+export type OwnProfile = CurrentUser & {
+  phone: string | null
+  isActive: boolean
+  createdAt: string
+  pinEnabled: boolean
+  hasPin: boolean
+}
+
+export async function getOwnProfile(token: string): Promise<OwnProfile> {
+  const res = await authFetch(token, "/users/me")
+  return parseJsonOrThrow(res)
+}
+
 export type UpdateCredentialsInput = {
-  currentPassword: string
+  currentPassword?: string
   newPassword?: string
   newPin?: string
+  pinEnabled?: boolean
 }
 
 export async function updateOwnCredentials(
   token: string,
   input: UpdateCredentialsInput
-): Promise<CurrentUser> {
+): Promise<OwnProfile> {
   const res = await authFetch(token, "/users/me/credentials", {
     method: "PATCH",
     body: JSON.stringify(input),

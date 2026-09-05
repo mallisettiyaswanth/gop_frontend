@@ -8,9 +8,10 @@ import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Field, FieldGroup, FieldLabel, FieldError, FieldDescription } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { SettingsSection, SettingsRow, SettingsFieldError } from "@/components/settings/settings-row"
+import { ThemeToggleGroup } from "@/components/settings/theme-toggle-group"
 import { getGymSettings, updateGymSettings, ApiError } from "@/lib/api"
 import { getStoredUser, getToken } from "@/lib/auth-storage"
 
@@ -26,7 +27,7 @@ const gymSettingsSchema = z.object({
 
 type GymSettingsValues = z.infer<typeof gymSettingsSchema>
 
-export default function GeneralSettingsPage() {
+export function GeneralSettingsForm() {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
@@ -100,83 +101,89 @@ export default function GeneralSettingsPage() {
 
   if (loading) {
     return (
-      <div className="flex max-w-lg flex-col gap-6">
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-20 w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
+      <div className="flex flex-col gap-4">
+        <Skeleton className="h-11 w-full" />
+        <Skeleton className="h-11 w-full" />
+        <Skeleton className="h-11 w-full" />
+        <Skeleton className="h-11 w-full" />
       </div>
     )
   }
 
   return (
-    <div className="max-w-lg">
+    <div>
       {loadError && (
         <Alert variant="destructive" className="mb-6">
           <AlertDescription>{loadError}</AlertDescription>
         </Alert>
       )}
       <form onSubmit={handleSubmit(onSubmit)} noValidate>
-        <FieldGroup>
-          {formError && (
-            <Alert variant="destructive">
-              <AlertDescription>{formError}</AlertDescription>
-            </Alert>
-          )}
-          {saved && (
-            <Alert>
-              <AlertDescription>Gym settings saved.</AlertDescription>
-            </Alert>
-          )}
+        {formError && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertDescription>{formError}</AlertDescription>
+          </Alert>
+        )}
+        {saved && (
+          <Alert className="mb-4">
+            <AlertDescription>Gym settings saved.</AlertDescription>
+          </Alert>
+        )}
+
+        <SettingsSection title="Gym profile">
           {!canEdit && (
-            <FieldDescription>
+            <p className="pb-2 text-sm text-muted-foreground">
               Only a Super Admin can change gym settings. You can view them here.
-            </FieldDescription>
+            </p>
           )}
-          <Field data-invalid={!!errors.name}>
-            <FieldLabel htmlFor="name">Gym name</FieldLabel>
-            <Input id="name" disabled={!canEdit} aria-invalid={!!errors.name} {...register("name")} />
-            <FieldError errors={[errors.name]} />
-          </Field>
-          <Field data-invalid={!!errors.address}>
-            <FieldLabel htmlFor="address">Address</FieldLabel>
-            <Textarea id="address" disabled={!canEdit} rows={3} {...register("address")} />
-            <FieldError errors={[errors.address]} />
-          </Field>
-          <Field data-invalid={!!errors.phone}>
-            <FieldLabel htmlFor="phone">Phone</FieldLabel>
-            <Input id="phone" disabled={!canEdit} {...register("phone")} />
-            <FieldError errors={[errors.phone]} />
-          </Field>
-          <Field data-invalid={!!errors.email}>
-            <FieldLabel htmlFor="email">Email</FieldLabel>
+          <SettingsRow label="Gym name" htmlFor="name">
+            <Input
+              id="name"
+              placeholder="My Gym"
+              disabled={!canEdit}
+              aria-invalid={!!errors.name}
+              {...register("name")}
+            />
+            <SettingsFieldError message={errors.name?.message} />
+          </SettingsRow>
+          <SettingsRow label="Phone" htmlFor="phone">
+            <Input id="phone" placeholder="+91 98765 43210" disabled={!canEdit} {...register("phone")} />
+            <SettingsFieldError message={errors.phone?.message} />
+          </SettingsRow>
+          <SettingsRow label="Email" htmlFor="email">
             <Input
               id="email"
               type="email"
+              placeholder="gym@example.com"
               disabled={!canEdit}
               aria-invalid={!!errors.email}
               {...register("email")}
             />
-            <FieldError errors={[errors.email]} />
-          </Field>
-          <Field data-invalid={!!errors.gstNumber}>
-            <FieldLabel htmlFor="gstNumber">GST number</FieldLabel>
-            <Input id="gstNumber" disabled={!canEdit} {...register("gstNumber")} />
-            <FieldError errors={[errors.gstNumber]} />
-          </Field>
-          <div className="grid grid-cols-2 gap-4">
-            <Field data-invalid={!!errors.timezone}>
-              <FieldLabel htmlFor="timezone">Timezone</FieldLabel>
-              <Input id="timezone" disabled={!canEdit} {...register("timezone")} />
-              <FieldError errors={[errors.timezone]} />
-            </Field>
-            <Field data-invalid={!!errors.currency}>
-              <FieldLabel htmlFor="currency">Currency</FieldLabel>
-              <Input id="currency" disabled={!canEdit} {...register("currency")} />
-              <FieldError errors={[errors.currency]} />
-            </Field>
-          </div>
-        </FieldGroup>
+            <SettingsFieldError message={errors.email?.message} />
+          </SettingsRow>
+          <SettingsRow label="GST number" htmlFor="gstNumber">
+            <Input id="gstNumber" placeholder="22AAAAA0000A1Z5" disabled={!canEdit} {...register("gstNumber")} />
+            <SettingsFieldError message={errors.gstNumber?.message} />
+          </SettingsRow>
+          <SettingsRow label="Timezone" htmlFor="timezone">
+            <Input id="timezone" placeholder="Asia/Kolkata" disabled={!canEdit} {...register("timezone")} />
+            <SettingsFieldError message={errors.timezone?.message} />
+          </SettingsRow>
+          <SettingsRow label="Currency" htmlFor="currency">
+            <Input id="currency" placeholder="INR" disabled={!canEdit} {...register("currency")} />
+            <SettingsFieldError message={errors.currency?.message} />
+          </SettingsRow>
+          <SettingsRow label="Address" htmlFor="address" stacked>
+            <Textarea
+              id="address"
+              placeholder="Street, city, state, ZIP"
+              disabled={!canEdit}
+              rows={3}
+              {...register("address")}
+            />
+            <SettingsFieldError message={errors.address?.message} />
+          </SettingsRow>
+        </SettingsSection>
+
         {canEdit && (
           <div className="mt-6">
             <Button type="submit" disabled={isSubmitting}>
@@ -186,6 +193,14 @@ export default function GeneralSettingsPage() {
           </div>
         )}
       </form>
+
+      <SettingsSection title="Preferences" className="mt-8">
+        <SettingsRow label="Appearance" description="Choose how the app looks on this device.">
+          <div className="flex justify-end">
+            <ThemeToggleGroup />
+          </div>
+        </SettingsRow>
+      </SettingsSection>
     </div>
   )
 }

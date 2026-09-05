@@ -20,7 +20,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { ChevronsUpDownIcon, LogOutIcon } from "lucide-react"
+import { ChevronsUpDownIcon, LogOutIcon, SettingsIcon } from "lucide-react"
 import type { CurrentUser } from "@/lib/api"
 import { clearSession } from "@/lib/auth-storage"
 
@@ -33,7 +33,13 @@ function initials(name: string) {
     .toUpperCase()
 }
 
-export function NavUser({ user }: { user: CurrentUser }) {
+export function NavUser({
+  user,
+  onOpenSettings,
+}: {
+  user: CurrentUser
+  onOpenSettings: () => void
+}) {
   const router = useRouter()
   const { isMobile } = useSidebar()
 
@@ -82,6 +88,10 @@ export function NavUser({ user }: { user: CurrentUser }) {
               </DropdownMenuLabel>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={onOpenSettings}>
+              <SettingsIcon />
+              Settings
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={handleLogout}>
               <LogOutIcon />
               Log out
