@@ -88,6 +88,18 @@ export type MemberStatus =
   | "CANCELLED"
   | "PENDING"
 
+export type MembershipStatus = "ACTIVE" | "EXPIRING" | "EXPIRED" | "FROZEN" | "CANCELLED"
+
+export type MemberMembership = {
+  id: string
+  planId: string
+  startDate: string
+  endDate: string
+  status: MembershipStatus
+  price: string
+  plan: MembershipPlan
+}
+
 export type Member = {
   id: string
   memberCode: string
@@ -97,6 +109,8 @@ export type Member = {
   status: MemberStatus
   joinDate: string
   createdAt: string
+  membership: MemberMembership | null
+  streak: number
 }
 
 export type CreateMemberInput = {
@@ -106,8 +120,34 @@ export type CreateMemberInput = {
   notes?: string
 }
 
-export async function listMembers(token: string): Promise<Member[]> {
-  const res = await authFetch(token, "/members")
+export type ListMembersParams = {
+  skip?: number
+  limit?: number
+  sortBy?: string
+  sortDir?: "asc" | "desc"
+  search?: string
+  /** Comma-separated MemberStatus values. */
+  status?: string
+  planId?: string
+}
+
+export type ListMembersResult = {
+  data: Member[]
+  total: number
+  skip: number
+  limit: number
+}
+
+export async function listMembers(
+  token: string,
+  params: ListMembersParams = {}
+): Promise<ListMembersResult> {
+  const query = new URLSearchParams()
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== "") query.set(key, String(value))
+  }
+  const qs = query.toString()
+  const res = await authFetch(token, `/members${qs ? `?${qs}` : ""}`)
   return parseJsonOrThrow(res)
 }
 
@@ -130,6 +170,8 @@ export type MembershipPlan = {
   name: string
   category: string | null
   level: string | null
+  /** Hex color (e.g. "#22c55e") used to highlight this plan's members in tables. */
+  color: string | null
   description: string | null
   priceTiers: PriceTier[]
   joiningFee: string
@@ -146,6 +188,7 @@ export type MembershipPlanInput = {
   name: string
   category?: string
   level?: string
+  color?: string
   description?: string
   priceTiers: PriceTier[]
   joiningFee?: number

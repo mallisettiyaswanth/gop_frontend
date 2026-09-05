@@ -1,8 +1,16 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
+import type { CSSProperties } from "react"
 import { useTable } from "@tanstack/react-table"
-import type { Column, ColumnDef, Row } from "@tanstack/react-table"
+import type {
+  Column,
+  ColumnDef,
+  ColumnFiltersState,
+  PaginationState,
+  Row,
+  SortingState,
+} from "@tanstack/react-table"
 import {
   SlidersHorizontalIcon,
   ChevronsUpDownIcon,
@@ -642,6 +650,20 @@ function DataTableSortList<TData extends object>({
   )
 }
 
+/**
+ * The effective query a server-side table needs to fetch its current page:
+ * pagination as `skip`/`limit`, the single active sort (this wrapper only
+ * ever applies one at a time in server mode), and the raw column filters so
+ * the caller can map each one to whatever its API expects.
+ */
+export interface DataTableServerQuery {
+  skip: number
+  limit: number
+  sortBy?: string
+  sortDir?: "asc" | "desc"
+  filters: { id: string; value: unknown }[]
+}
+
 export interface DataTableProps<TData extends object> {
   /** Column definitions — same shape as any TanStack Table v9 ColumnDef, plus optional `meta.variant`/`meta.options` for filters. */
   columns: DataTableColumn<TData>[]
@@ -661,6 +683,25 @@ export interface DataTableProps<TData extends object> {
   dense?: boolean
   onRowClick?: (row: TData) => void
   className?: string
+  /** Inline style per row, e.g. a colored left edge/tint driven by row data. */
+  getRowStyle?: (row: TData) => CSSProperties | undefined
+
+  /**
+   * Switches to server-side mode: this component still owns the pagination
+   * page/size, sorting, and column-filter UI state, but stops slicing,
+   * sorting, or filtering `data` itself — it's assumed to already be just
+   * the current page. Pair with `rowCount` and `onQueryChange`. Default
+   * false (ordinary local/client-side filtering over all of `data`).
+   */
+  serverSide?: boolean
+  /** Total row count across all pages. Required when `serverSide` is true — drives page count. */
+  rowCount?: number
+  /**
+   * Fires whenever the effective query (pagination, sorting, filters)
+   * changes while `serverSide` is true, so the caller can refetch. Memoize
+   * this (`useCallback`) — an inline function republishes on every render.
+   */
+  onQueryChange?: (query: DataTableServerQuery) => void
 
   /** Shows a command-palette-style "Filter" menu (search a field, pick a value) with active filters as chips. Default false. */
   isFiltersEnable?: boolean
@@ -700,13 +741,21 @@ export function DataTable<TData extends object>({
   dense = false,
   onRowClick,
   className,
+  getRowStyle,
   isFiltersEnable = false,
   isViewEnable = false,
   isSortEnable = true,
   isSortListEnable = false,
   enableColumnPinning = false,
   tableLayout: tableLayoutOverrides,
+  serverSide = false,
+  rowCount,
+  onQueryChange,
 }: DataTableProps<TData>) {
+  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize })
+  const [sorting, setSorting] = useState<SortingState>([])
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
+
   const table = useTable({
     features: dataGridFeatures,
     columns,
@@ -717,13 +766,33 @@ export function DataTable<TData extends object>({
     defaultColumn: {
       filterFn: containsFilterFn,
     },
-    initialState: {
-      pagination: { pageIndex: 0, pageSize },
-    },
+    state: { pagination, sorting, columnFilters },
+    onPaginationChange: setPagination,
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    manualPagination: serverSide,
+    manualSorting: serverSide,
+    manualFiltering: serverSide,
+    rowCount: serverSide ? rowCount : undefined,
   })
 
+  useEffect(() => {
+    if (!serverSide || !onQueryChange) return
+    const [sort] = sorting
+    onQueryChange({
+      skip: pagination.pageIndex * pagination.pageSize,
+      limit: pagination.pageSize,
+      sortBy: sort?.id,
+      sortDir: sort ? (sort.desc ? "desc" : "asc") : undefined,
+      filters: columnFilters,
+    })
+    // onQueryChange is expected to be stable (useCallback) — including it
+    // would refire this on every parent render, not just query changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serverSide, pagination.pageIndex, pagination.pageSize, sorting, columnFilters])
+
   const showToolbar = isFiltersEnable || isSortListEnable || isViewEnable
-  const recordCount = table.getPrePaginatedRowModel().rows.length
+  const recordCount = serverSide ? (rowCount ?? data.length) : table.getPrePaginatedRowModel().rows.length
 
   return (
     <DataGrid
@@ -732,6 +801,7 @@ export function DataTable<TData extends object>({
       isLoading={isLoading}
       emptyMessage={emptyMessage}
       onRowClick={onRowClick}
+      getRowStyle={getRowStyle}
       tableLayout={{
         dense,
         rowBorder: true,

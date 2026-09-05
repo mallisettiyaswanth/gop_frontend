@@ -1561,7 +1561,7 @@ function DataGridTableBodyRow<TData extends object>({
         assignRef(rowRef, node)
         assignRef(dndRef, node)
       }}
-      style={{ ...(dndStyle ? dndStyle : null) }}
+      style={{ ...props.getRowStyle?.(row.original), ...(dndStyle ? dndStyle : null) }}
       data-state={
         table.options.enableRowSelection && row.getIsSelected()
           ? "selected"

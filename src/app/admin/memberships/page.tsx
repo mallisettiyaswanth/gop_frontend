@@ -53,10 +53,16 @@ const optionalAmount = z.union([
 ])
 const optionalWholeNumber = z.union([z.literal(""), z.string().regex(/^\d+$/, "Enter a whole number")])
 
+const optionalColor = z.union([
+  z.literal(""),
+  z.string().regex(/^#[0-9a-fA-F]{6}$/, "Enter a hex color like #22c55e"),
+])
+
 const planSchema = z.object({
   name: z.string().min(1, "Name is required"),
   category: z.string(),
   level: z.string(),
+  color: optionalColor,
   description: z.string(),
   priceTiers: z
     .array(
@@ -80,6 +86,7 @@ const emptyValues: PlanFormValues = {
   name: "",
   category: "",
   level: "",
+  color: "",
   description: "",
   priceTiers: [{ label: "Monthly", price: "", durationDays: "30" }],
   joiningFee: "",
@@ -99,6 +106,13 @@ const columns: DataTableColumn<MembershipPlan>[] = [
     header: ({ column }) => <DataGridColumnHeader column={column} title="Plan" />,
     cell: ({ row }) => (
       <div className="flex items-center gap-2">
+        {row.original.color && (
+          <span
+            className="size-2.5 shrink-0 rounded-full"
+            style={{ backgroundColor: row.original.color }}
+            aria-hidden
+          />
+        )}
         <span className="font-medium">{row.original.name}</span>
         {row.original.level && (
           <Badge variant="secondary" className="shrink-0">
@@ -198,15 +212,27 @@ function PlanCard({ plan, onEdit }: { plan: MembershipPlan; onEdit: () => void }
   ].filter((extra): extra is string => !!extra)
 
   return (
-    <div className="flex flex-col gap-4 rounded-xl border p-5 shadow-sm transition-shadow hover:shadow-md">
+    <div
+      className="flex flex-col gap-4 rounded-xl border p-5 shadow-sm transition-shadow hover:shadow-md"
+      style={plan.color ? { borderTopColor: plan.color, borderTopWidth: 3 } : undefined}
+    >
       <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          {plan.category && (
-            <p className="truncate text-xs font-medium tracking-wide text-muted-foreground uppercase">
-              {plan.category}
-            </p>
+        <div className="flex min-w-0 items-center gap-2">
+          {plan.color && (
+            <span
+              className="size-2.5 shrink-0 rounded-full"
+              style={{ backgroundColor: plan.color }}
+              aria-hidden
+            />
           )}
-          <h3 className="truncate text-lg font-semibold">{plan.name}</h3>
+          <div className="min-w-0">
+            {plan.category && (
+              <p className="truncate text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                {plan.category}
+              </p>
+            )}
+            <h3 className="truncate text-lg font-semibold">{plan.name}</h3>
+          </div>
         </div>
         <Badge variant={plan.isActive ? "success-light" : "destructive-light"} className="shrink-0">
           {plan.isActive ? "Active" : "Inactive"}
@@ -331,6 +357,7 @@ export default function MembershipsPage() {
       name: plan.name,
       category: plan.category ?? "",
       level: plan.level ?? "",
+      color: plan.color ?? "",
       description: plan.description ?? "",
       priceTiers:
         plan.priceTiers.length > 0
@@ -357,6 +384,7 @@ export default function MembershipsPage() {
       name: values.name,
       category: values.category || undefined,
       level: values.level || undefined,
+      color: values.color || undefined,
       description: values.description || undefined,
       priceTiers: values.priceTiers.map((tier) => ({
         label: tier.label,
@@ -491,6 +519,47 @@ export default function MembershipsPage() {
                   <Input id="level" placeholder="e.g. Basic, Premium" {...register("level")} />
                 </Field>
               </div>
+
+              <Field data-invalid={!!errors.color}>
+                <FieldLabel htmlFor="color">Highlight color</FieldLabel>
+                <FieldDescription>
+                  Members on this plan are tinted this color in the members table.
+                </FieldDescription>
+                <Controller
+                  control={control}
+                  name="color"
+                  render={({ field }) => (
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id="color"
+                        type="color"
+                        className="h-9 w-14 p-1"
+                        value={field.value || "#22c55e"}
+                        onChange={(e) => field.onChange(e.target.value)}
+                      />
+                      <Input
+                        placeholder="#22c55e"
+                        className="flex-1"
+                        aria-invalid={!!errors.color}
+                        value={field.value}
+                        onChange={(e) => field.onChange(e.target.value)}
+                      />
+                      {field.value && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => field.onChange("")}
+                          aria-label="Clear color"
+                        >
+                          <XIcon />
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                />
+                <FieldError errors={[errors.color]} />
+              </Field>
 
               <Field data-invalid={!!errors.visitLimit}>
                 <FieldLabel htmlFor="visitLimit">Visit limit</FieldLabel>

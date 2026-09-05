@@ -8,7 +8,7 @@ import {
   useMemo,
   useRef,
 } from "react"
-import type { ReactNode } from "react"
+import type { CSSProperties, ReactNode } from "react"
 import {
   mergeDataGridI18n,
   type DataGridI18nConfig,
@@ -749,6 +749,12 @@ export interface DataGridProps<
    * omit the prop entirely to render none anywhere.
    */
   getRowStatus?: (row: TData) => DataGridRowStatus | undefined
+  /**
+   * Optional inline style per row, e.g. a colored left edge/tint driven by
+   * row data (a category color, a priority level, ...). Merged onto the
+   * `<tr>` alongside drag-and-drop's own style.
+   */
+  getRowStyle?: (row: TData) => CSSProperties | undefined
   /**
    * Optional CRUD indication per cell: the classic corner mark on cells the
    * consumer tracks as edited or invalid.

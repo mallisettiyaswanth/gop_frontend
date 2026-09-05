@@ -1,11 +1,25 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import type { CSSProperties } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { PlusIcon, Table2Icon, LayoutGridIcon, PhoneIcon, MailIcon, CalendarIcon } from "lucide-react"
-import { DataTable, type DataTableColumn, multiSelectFilterFn } from "@/components/data-table"
+import {
+  PlusIcon,
+  Table2Icon,
+  LayoutGridIcon,
+  PhoneIcon,
+  MailIcon,
+  CalendarIcon,
+  FlameIcon,
+} from "lucide-react"
+import {
+  DataTable,
+  type DataTableColumn,
+  type DataTableServerQuery,
+  multiSelectFilterFn,
+} from "@/components/data-table"
 import { DataGridColumnHeader } from "@/components/reui/data-grid/data-grid-column-header"
 import { Badge, type BadgeProps } from "@/components/reui/badge"
 import { Button } from "@/components/ui/button"
@@ -25,9 +39,11 @@ import {
 import {
   listMembers,
   createMember,
+  listMembershipPlans,
   ApiError,
   type Member,
   type MemberStatus,
+  type MembershipPlan,
 } from "@/lib/api"
 import { getToken } from "@/lib/auth-storage"
 
@@ -58,54 +74,68 @@ function initials(name: string) {
     .toUpperCase()
 }
 
-const columns: DataTableColumn<Member>[] = [
-  {
-    accessorKey: "memberCode",
-    header: ({ column }) => <DataGridColumnHeader column={column} title="Member" />,
-    meta: { headerTitle: "Member", skeleton: <Skeleton className="h-4 w-20" /> },
-  },
-  {
-    accessorKey: "name",
-    header: ({ column }) => <DataGridColumnHeader column={column} title="Name" />,
-    meta: { headerTitle: "Name", skeleton: <Skeleton className="h-4 w-32" /> },
-  },
-  {
-    accessorKey: "phone",
-    header: ({ column }) => <DataGridColumnHeader column={column} title="Phone" />,
-    meta: { headerTitle: "Phone", skeleton: <Skeleton className="h-4 w-24" /> },
-  },
-  {
-    accessorKey: "email",
-    header: ({ column }) => <DataGridColumnHeader column={column} title="Email" />,
-    cell: ({ row }) => row.original.email ?? "—",
-    meta: { headerTitle: "Email", skeleton: <Skeleton className="h-4 w-36" /> },
-  },
-  {
-    accessorKey: "status",
-    header: ({ column }) => <DataGridColumnHeader column={column} title="Status" />,
-    cell: ({ row }) => (
-      <Badge variant={statusVariant[row.original.status]}>
-        {statusLabel[row.original.status]}
-      </Badge>
-    ),
-    filterFn: multiSelectFilterFn,
-    meta: {
-      headerTitle: "Status",
-      variant: "select",
-      options: (Object.keys(statusLabel) as MemberStatus[]).map((status) => ({
-        label: statusLabel[status],
-        value: status,
-      })),
-      skeleton: <Skeleton className="h-5 w-20 rounded-full" />,
-    },
-  },
-  {
-    accessorKey: "joinDate",
-    header: ({ column }) => <DataGridColumnHeader column={column} title="Joined" />,
-    cell: ({ row }) => new Date(row.original.joinDate).toLocaleDateString(),
-    meta: { headerTitle: "Joined", skeleton: <Skeleton className="h-4 w-20" /> },
-  },
-]
+function formatCurrency(value: number | string) {
+  return Number(value).toLocaleString(undefined, { maximumFractionDigits: 2 })
+}
+
+/** Finds which named tier a membership's snapshot price matches, for display. */
+function tierLabelFor(member: Member) {
+  const membership = member.membership
+  if (!membership) return null
+  return (
+    membership.plan.priceTiers.find((tier) => tier.price === Number(membership.price))?.label ??
+    null
+  )
+}
+
+function MembershipCell({ member }: { member: Member }) {
+  const membership = member.membership
+  if (!membership) {
+    return <span className="text-sm text-muted-foreground">No active plan</span>
+  }
+  const tier = tierLabelFor(member)
+  return (
+    <div className="flex flex-col gap-0.5">
+      <div className="flex items-center gap-1.5 text-sm font-medium">
+        {membership.plan.color && (
+          <span
+            className="size-2 shrink-0 rounded-full"
+            style={{ backgroundColor: membership.plan.color }}
+            aria-hidden
+          />
+        )}
+        <span className="truncate">{membership.plan.name}</span>
+        {tier && <span className="font-normal text-muted-foreground">· {tier}</span>}
+      </div>
+      <span className="text-xs text-muted-foreground">
+        ₹{formatCurrency(membership.price)} · until{" "}
+        {new Date(membership.endDate).toLocaleDateString()}
+      </span>
+    </div>
+  )
+}
+
+function StreakCell({ streak }: { streak: number }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <FlameIcon
+        className={`size-4 ${streak > 0 ? "text-orange-500" : "text-muted-foreground/40"}`}
+      />
+      <span className="font-medium">{streak}</span>
+      <span className="text-xs text-muted-foreground">{streak === 1 ? "week" : "weeks"}</span>
+    </div>
+  )
+}
+
+/** Tints a row with its membership plan's color, so e.g. all PT members read at a glance. */
+function getMemberRowStyle(member: Member): CSSProperties | undefined {
+  const color = member.membership?.plan.color
+  if (!color) return undefined
+  return {
+    boxShadow: `inset 3px 0 0 0 ${color}`,
+    backgroundColor: `color-mix(in oklab, ${color} 7%, transparent)`,
+  }
+}
 
 const addMemberSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -116,8 +146,12 @@ const addMemberSchema = z.object({
 type AddMemberValues = z.infer<typeof addMemberSchema>
 
 function MemberCard({ member }: { member: Member }) {
+  const color = member.membership?.plan.color
   return (
-    <div className="flex flex-col gap-4 rounded-lg border bg-card p-4 transition-shadow hover:shadow-sm">
+    <div
+      className="flex flex-col gap-4 rounded-lg border bg-card p-4 transition-shadow hover:shadow-sm"
+      style={color ? { borderLeftColor: color, borderLeftWidth: 3 } : undefined}
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-3">
           <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
@@ -147,6 +181,11 @@ function MemberCard({ member }: { member: Member }) {
           <span>Joined {new Date(member.joinDate).toLocaleDateString()}</span>
         </div>
       </div>
+
+      <div className="flex items-center justify-between gap-2 border-t pt-3">
+        <MembershipCell member={member} />
+        <StreakCell streak={member.streak} />
+      </div>
     </div>
   )
 }
@@ -175,11 +214,14 @@ function MemberCardSkeleton() {
 
 export default function MembersPage() {
   const [members, setMembers] = useState<Member[]>([])
+  const [total, setTotal] = useState(0)
+  const [plans, setPlans] = useState<MembershipPlan[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [view, setView] = useState<"table" | "cards">("table")
+  const [query, setQuery] = useState<DataTableServerQuery>({ skip: 0, limit: 10, filters: [] })
 
   const {
     register,
@@ -191,23 +233,119 @@ export default function MembersPage() {
     defaultValues: { name: "", phone: "", email: "" },
   })
 
-  async function loadMembers() {
+  const columns: DataTableColumn<Member>[] = useMemo(() => [
+    {
+      accessorKey: "memberCode",
+      header: ({ column }) => <DataGridColumnHeader column={column} title="Member" />,
+      enableColumnFilter: false,
+      meta: { headerTitle: "Member", skeleton: <Skeleton className="h-4 w-20" /> },
+    },
+    {
+      accessorKey: "name",
+      header: ({ column }) => <DataGridColumnHeader column={column} title="Name" />,
+      meta: { headerTitle: "Name", skeleton: <Skeleton className="h-4 w-32" /> },
+    },
+    {
+      accessorKey: "phone",
+      header: ({ column }) => <DataGridColumnHeader column={column} title="Phone" />,
+      enableColumnFilter: false,
+      meta: { headerTitle: "Phone", skeleton: <Skeleton className="h-4 w-24" /> },
+    },
+    {
+      accessorKey: "email",
+      header: ({ column }) => <DataGridColumnHeader column={column} title="Email" />,
+      cell: ({ row }) => row.original.email ?? "—",
+      enableColumnFilter: false,
+      meta: { headerTitle: "Email", skeleton: <Skeleton className="h-4 w-36" /> },
+    },
+    {
+      accessorKey: "status",
+      header: ({ column }) => <DataGridColumnHeader column={column} title="Status" />,
+      cell: ({ row }) => (
+        <Badge variant={statusVariant[row.original.status]}>
+          {statusLabel[row.original.status]}
+        </Badge>
+      ),
+      filterFn: multiSelectFilterFn,
+      meta: {
+        headerTitle: "Status",
+        variant: "select",
+        options: (Object.keys(statusLabel) as MemberStatus[]).map((status) => ({
+          label: statusLabel[status],
+          value: status,
+        })),
+        skeleton: <Skeleton className="h-5 w-20 rounded-full" />,
+      },
+    },
+    {
+      id: "membership",
+      accessorFn: (row) => row.membership?.planId ?? "",
+      header: ({ column }) => <DataGridColumnHeader column={column} title="Membership" />,
+      cell: ({ row }) => <MembershipCell member={row.original} />,
+      enableSorting: false,
+      filterFn: multiSelectFilterFn,
+      meta: {
+        headerTitle: "Membership",
+        variant: "select",
+        options: plans.map((plan) => ({ label: plan.name, value: plan.id })),
+        skeleton: <Skeleton className="h-8 w-40" />,
+      },
+    },
+    {
+      accessorKey: "streak",
+      header: ({ column }) => <DataGridColumnHeader column={column} title="Streak" />,
+      cell: ({ row }) => <StreakCell streak={row.original.streak} />,
+      enableSorting: false,
+      enableColumnFilter: false,
+      meta: { headerTitle: "Streak", skeleton: <Skeleton className="h-4 w-16" /> },
+    },
+    {
+      accessorKey: "joinDate",
+      header: ({ column }) => <DataGridColumnHeader column={column} title="Joined" />,
+      cell: ({ row }) => new Date(row.original.joinDate).toLocaleDateString(),
+      enableColumnFilter: false,
+      meta: { headerTitle: "Joined", skeleton: <Skeleton className="h-4 w-20" /> },
+    },
+  ], [plans])
+
+  const fetchMembers = useCallback(async (q: DataTableServerQuery) => {
     const token = getToken()
     if (!token) return
     setLoading(true)
     setLoadError(null)
     try {
-      const data = await listMembers(token)
-      setMembers(data)
+      const statusValue = q.filters.find((f) => f.id === "status")?.value as string[] | undefined
+      const searchValue = q.filters.find((f) => f.id === "name")?.value as string | undefined
+      const planValue = q.filters.find((f) => f.id === "membership")?.value as
+        | string[]
+        | undefined
+
+      const result = await listMembers(token, {
+        skip: q.skip,
+        limit: q.limit,
+        sortBy: q.sortBy,
+        sortDir: q.sortDir,
+        status: statusValue && statusValue.length > 0 ? statusValue.join(",") : undefined,
+        planId: planValue && planValue.length > 0 ? planValue.join(",") : undefined,
+        search: searchValue || undefined,
+      })
+      setMembers(result.data)
+      setTotal(result.total)
     } catch (err) {
       setLoadError(err instanceof ApiError ? err.message : "Couldn't load members.")
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
-    loadMembers()
+    fetchMembers(query)
+  }, [query, fetchMembers])
+
+  useEffect(() => {
+    const token = getToken()
+    if (!token) return
+    listMembershipPlans(token).then(setPlans).catch(() => {})
   }, [])
 
   async function onSubmit(values: AddMemberValues) {
@@ -222,7 +360,7 @@ export default function MembersPage() {
       })
       reset()
       setDialogOpen(false)
-      loadMembers()
+      fetchMembers(query)
     } catch (err) {
       setFormError(err instanceof ApiError ? err.message : "Something went wrong. Try again.")
     }
@@ -285,6 +423,10 @@ export default function MembersPage() {
           isSortListEnable
           isViewEnable
           enableColumnPinning
+          getRowStyle={getMemberRowStyle}
+          serverSide
+          rowCount={total}
+          onQueryChange={setQuery}
         />
       ) : (
         <div>
