@@ -128,8 +128,20 @@ function DateRangePicker({
           </Button>
         }
       />
-      <PopoverContent align="end" className="flex w-auto p-0">
-        <div className="flex flex-col gap-1 border-r p-2">
+      <PopoverContent align="end" className="flex w-auto flex-row gap-0 p-0">
+        <Calendar
+          mode="range"
+          numberOfMonths={2}
+          defaultMonth={range.from}
+          selected={range}
+          onSelect={(next) => {
+            if (!next) return
+            onChange(next)
+            if (next.from && next.to) setOpen(false)
+          }}
+          disabled={{ after: new Date() }}
+        />
+        <div className="flex flex-col gap-1 border-l p-2">
           {RANGE_PRESETS.map((preset) => (
             <Button
               key={preset.label}
@@ -146,18 +158,6 @@ function DateRangePicker({
             </Button>
           ))}
         </div>
-        <Calendar
-          mode="range"
-          numberOfMonths={2}
-          defaultMonth={range.from}
-          selected={range}
-          onSelect={(next) => {
-            if (!next) return
-            onChange(next)
-            if (next.from && next.to) setOpen(false)
-          }}
-          disabled={{ after: new Date() }}
-        />
       </PopoverContent>
     </Popover>
   )
@@ -346,6 +346,10 @@ export default function AttendancePage() {
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Search name, phone, email, ID…"
               className="pl-8"
+              name="attendance-search"
+              autoComplete="off"
+              data-1p-ignore
+              data-lpignore="true"
             />
           </div>
           <DateRangePicker range={range} onChange={setRange} />

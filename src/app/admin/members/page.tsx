@@ -519,6 +519,10 @@ function MembersPageContent() {
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Search name, phone, email, ID…"
               className="pl-8"
+              name="members-search"
+              autoComplete="off"
+              data-1p-ignore
+              data-lpignore="true"
             />
           </div>
           <div className="flex items-center rounded-md border p-0.5">
