@@ -88,6 +88,7 @@ function tierLabelFor(member: Member) {
   )
 }
 
+/** Full plan summary (name, tier, price, validity) — used on the member cards. */
 function MembershipCell({ member }: { member: Member }) {
   const membership = member.membership
   if (!membership) {
@@ -115,6 +116,41 @@ function MembershipCell({ member }: { member: Member }) {
   )
 }
 
+/** Just the plan name + color dot — the table keeps duration/expiry in their own columns. */
+function PlanCell({ member }: { member: Member }) {
+  const membership = member.membership
+  if (!membership) {
+    return (
+      <span className="block min-w-[110px] text-sm whitespace-nowrap text-muted-foreground">
+        No active plan
+      </span>
+    )
+  }
+  return (
+    <div className="flex min-w-[110px] items-center gap-1.5 text-sm font-medium">
+      {membership.plan.color && (
+        <span
+          className="size-2 shrink-0 rounded-full"
+          style={{ backgroundColor: membership.plan.color }}
+          aria-hidden
+        />
+      )}
+      <span>{membership.plan.name.split(" ")[0]}</span>
+    </div>
+  )
+}
+
+function DurationCell({ member }: { member: Member }) {
+  const tier = tierLabelFor(member)
+  return <span className="text-sm">{tier ?? <span className="text-muted-foreground">—</span>}</span>
+}
+
+function ExpiresCell({ member }: { member: Member }) {
+  const endDate = member.membership?.endDate
+  if (!endDate) return <span className="text-sm text-muted-foreground">—</span>
+  return <span className="text-sm">{new Date(endDate).toLocaleDateString()}</span>
+}
+
 function StreakCell({ streak }: { streak: number }) {
   return (
     <div className="flex items-center gap-1.5">
@@ -132,8 +168,7 @@ function getMemberRowStyle(member: Member): CSSProperties | undefined {
   const color = member.membership?.plan.color
   if (!color) return undefined
   return {
-    boxShadow: `inset 3px 0 0 0 ${color}`,
-    backgroundColor: `color-mix(in oklab, ${color} 7%, transparent)`,
+    backgroundColor: `color-mix(in oklab, ${color} 9%, transparent)`,
   }
 }
 
@@ -243,6 +278,7 @@ export default function MembersPage() {
     {
       accessorKey: "name",
       header: ({ column }) => <DataGridColumnHeader column={column} title="Name" />,
+      cell: ({ row }) => <span className="block min-w-[170px] font-medium">{row.original.name}</span>,
       meta: { headerTitle: "Name", skeleton: <Skeleton className="h-4 w-32" /> },
     },
     {
@@ -281,15 +317,33 @@ export default function MembersPage() {
       id: "membership",
       accessorFn: (row) => row.membership?.planId ?? "",
       header: ({ column }) => <DataGridColumnHeader column={column} title="Membership" />,
-      cell: ({ row }) => <MembershipCell member={row.original} />,
+      cell: ({ row }) => <PlanCell member={row.original} />,
       enableSorting: false,
       filterFn: multiSelectFilterFn,
       meta: {
         headerTitle: "Membership",
         variant: "select",
         options: plans.map((plan) => ({ label: plan.name, value: plan.id })),
-        skeleton: <Skeleton className="h-8 w-40" />,
+        skeleton: <Skeleton className="h-4 w-32" />,
       },
+    },
+    {
+      id: "duration",
+      accessorFn: (row) => tierLabelFor(row) ?? "",
+      header: ({ column }) => <DataGridColumnHeader column={column} title="Duration" />,
+      cell: ({ row }) => <DurationCell member={row.original} />,
+      enableSorting: false,
+      enableColumnFilter: false,
+      meta: { headerTitle: "Duration", skeleton: <Skeleton className="h-4 w-16" /> },
+    },
+    {
+      id: "expires",
+      accessorFn: (row) => row.membership?.endDate ?? "",
+      header: ({ column }) => <DataGridColumnHeader column={column} title="Expires" />,
+      cell: ({ row }) => <ExpiresCell member={row.original} />,
+      enableSorting: false,
+      enableColumnFilter: false,
+      meta: { headerTitle: "Expires", skeleton: <Skeleton className="h-4 w-20" /> },
     },
     {
       accessorKey: "streak",
@@ -367,8 +421,8 @@ export default function MembersPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
+    <div className="flex h-full min-h-0 flex-col gap-6">
+      <div className="flex shrink-0 items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Members</h1>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -407,7 +461,7 @@ export default function MembersPage() {
       </div>
 
       {loadError && (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="shrink-0">
           <AlertDescription>{loadError}</AlertDescription>
         </Alert>
       )}
@@ -423,13 +477,17 @@ export default function MembersPage() {
           isSortListEnable
           isViewEnable
           enableColumnPinning
+          initialColumnPinning={{ start: ["name"] }}
+          initialColumnVisibility={{ memberCode: false }}
+          fillHeight
+          className="flex-1 min-h-0"
           getRowStyle={getMemberRowStyle}
           serverSide
           rowCount={total}
           onQueryChange={setQuery}
         />
       ) : (
-        <div>
+        <div className="flex-1 min-h-0 overflow-y-auto">
           {loading ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {Array.from({ length: 6 }, (_, i) => (

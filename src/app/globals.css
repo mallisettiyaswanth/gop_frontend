@@ -184,6 +184,15 @@
   }
 }
 
+/* Keeps the element scrollable (wheel, trackpad, drag) without painting a scrollbar. */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 .bg-grid-dots {
   background-image: radial-gradient(circle, var(--border) 1px, transparent 1px);
   background-size: 28px 28px;

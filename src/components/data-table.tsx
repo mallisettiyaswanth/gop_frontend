@@ -141,7 +141,7 @@ function FilterChipField<TData extends object>({
           <Button
             variant="ghost"
             size="sm"
-            className="h-8 rounded-none rounded-l-md border border-r-0 font-normal"
+            className="h-8 rounded-none rounded-l-md border border-r-0 border-border font-normal"
           >
             {label}
           </Button>
@@ -188,7 +188,7 @@ function FilterChipSelectValue<TData extends object>({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         render={
-          <Button variant="ghost" size="sm" className="h-8 min-w-16 rounded-none border font-normal">
+          <Button variant="ghost" size="sm" className="h-8 min-w-16 rounded-none border border-border font-normal">
             {selectedLabels.length === 0
               ? "Select options…"
               : selectedLabels.length > 1
@@ -276,7 +276,7 @@ function FilterChip<TData extends object>({
       <Button
         variant="ghost"
         size="icon"
-        className="h-8 shrink-0 rounded-none rounded-r-md border border-l-0 px-1.5"
+        className="h-8 shrink-0 rounded-none rounded-r-md border border-l-0 border-border px-1.5"
         onClick={onRemove}
         aria-label={`Remove ${label} filter`}
       >
@@ -713,6 +713,19 @@ export interface DataTableProps<TData extends object> {
   isSortListEnable?: boolean
   /** Lets columns be pinned start/end via the column header menu. Default false. */
   enableColumnPinning?: boolean
+  /** Columns pinned on first render, e.g. `{ start: ["name"] }` to pin to the leading (left, in LTR) edge. Still user-adjustable afterward when `enableColumnPinning` is on. */
+  initialColumnPinning?: { start?: string[]; end?: string[] }
+  /** Column visibility on first render, e.g. `{ memberCode: false }` to start with a column hidden. Still user-adjustable via the View menu. */
+  initialColumnVisibility?: Record<string, boolean>
+  /**
+   * Caps the table at its parent's height and scrolls the rows internally
+   * (both directions) instead of growing the page — pair with a parent
+   * that actually constrains height (e.g. a flex column with `h-full
+   * min-h-0`). The toolbar and pagination bar stay put; only the row area
+   * scrolls, with the header pinned to its top. Default false: the table
+   * grows to fit all rows and the page scrolls.
+   */
+  fillHeight?: boolean
   /**
    * Escape hatch for any other ReUI tableLayout flag (columnsResizable,
    * columnsMovable, rowsDraggable, cellSelection, ...) not covered by a
@@ -747,6 +760,9 @@ export function DataTable<TData extends object>({
   isSortEnable = true,
   isSortListEnable = false,
   enableColumnPinning = false,
+  initialColumnPinning,
+  initialColumnVisibility,
+  fillHeight = false,
   tableLayout: tableLayoutOverrides,
   serverSide = false,
   rowCount,
@@ -765,6 +781,17 @@ export function DataTable<TData extends object>({
     enableColumnPinning,
     defaultColumn: {
       filterFn: containsFilterFn,
+    },
+    initialState: {
+      // Always a concrete { start, end } — never `undefined` — since this
+      // sits inside initialState as an explicit key: an `undefined` value
+      // here overwrites the feature's own default state instead of falling
+      // back to it, crashing columnPinning reads elsewhere in the grid.
+      columnPinning: {
+        start: initialColumnPinning?.start ?? [],
+        end: initialColumnPinning?.end ?? [],
+      },
+      columnVisibility: initialColumnVisibility,
     },
     state: { pagination, sorting, columnFilters },
     onPaginationChange: setPagination,
@@ -807,15 +834,20 @@ export function DataTable<TData extends object>({
         rowBorder: true,
         cellBorder: true,
         headerBorder: true,
-        headerSticky: false,
+        headerSticky: fillHeight,
         width: "auto",
         columnsPinnable: enableColumnPinning,
         ...tableLayoutOverrides,
       }}
     >
-      <div className={cn("flex flex-col gap-3", className)}>
+      <div className={cn("flex flex-col gap-3", fillHeight && "h-full min-h-0", className)}>
         {showToolbar && (
-          <div className="flex flex-wrap items-center justify-between gap-2">
+          <div
+            className={cn(
+              "flex flex-wrap items-center justify-between gap-2",
+              fillHeight && "shrink-0"
+            )}
+          >
             <div className="flex flex-wrap items-center gap-2">
               {isSortListEnable && <DataTableSortList table={table} />}
               {isFiltersEnable && <DataTableFilterMenu table={table} />}
@@ -834,12 +866,32 @@ export function DataTable<TData extends object>({
           </div>
         )}
 
-        <div className="overflow-auto rounded-lg border">
-          <DataGridContainer>
+        <div
+          className={cn(
+            "no-scrollbar overflow-auto rounded-lg border",
+            fillHeight && "flex-1 min-h-0"
+          )}
+        >
+          {/*
+            DataGridContainer defaults to overflow-hidden, which — since it's
+            w-full of this wrapper rather than sized to the table's natural
+            width — silently CLIPS a table wider than the wrapper instead of
+            scrolling it. It must stay fully overflow-visible (not, say,
+            overflow-x-auto) so it never becomes a scroll container itself —
+            position:sticky's containing block is the NEAREST scroll
+            container, and if this box claimed that role (it never actually
+            scrolls) the sticky header would pin to it instead of to this
+            wrapper, which is the one that really scrolls in both directions.
+          */}
+          <DataGridContainer className="overflow-visible">
             <DataGridTable />
           </DataGridContainer>
         </div>
-        {!hidePagination && <DataGridPagination sizes={pageSizeOptions} />}
+        {!hidePagination && (
+          <div className={cn(fillHeight && "shrink-0")}>
+            <DataGridPagination sizes={pageSizeOptions} />
+          </div>
+        )}
       </div>
     </DataGrid>
   )
