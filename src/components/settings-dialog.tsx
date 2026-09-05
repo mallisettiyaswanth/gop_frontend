@@ -61,7 +61,7 @@ export function SettingsDialog({
         </DialogDescription>
         <SidebarProvider
           className="h-[760px] items-start"
-          style={{ "--sidebar-width": "13rem" } as React.CSSProperties}
+          style={{ "--sidebar-width": "13rem", minHeight: 0 } as React.CSSProperties}
         >
           <Sidebar collapsible="none" className="hidden border-r md:flex">
             <SidebarHeader className="pt-4">
